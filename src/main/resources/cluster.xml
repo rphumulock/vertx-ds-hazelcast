@@ -1,0 +1,76 @@
+<hazelcast xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config
+                               http://www.hazelcast.com/schema/config/hazelcast-config-4.2.xsd">
+  <cluster-name>dev</cluster-name>
+  <management-center scripting-enabled="false"/>
+
+  <properties>
+    <property name="hazelcast.logging.type">log4j2</property>
+  </properties>
+
+
+
+  <member-attributes>
+    <attribute name="__vertx.nodeId">unique-identifier</attribute>
+  </member-attributes>
+
+  <multimap name="__vertx.subs">
+    <backup-count>1</backup-count>
+    <value-collection-type>SET</value-collection-type>
+  </multimap>
+
+  <map name="__vertx.haInfo">
+    <backup-count>1</backup-count>
+  </map>
+
+  <map name="__vertx.nodeInfo">
+    <backup-count>1</backup-count>
+  </map>
+
+  <cp-subsystem>
+    <cp-member-count>0</cp-member-count>
+    <semaphores>
+      <semaphore>
+        <name>__vertx.*</name>
+        <jdk-compatible>false</jdk-compatible>
+        <initial-permits>1</initial-permits>
+      </semaphore>
+    </semaphores>
+  </cp-subsystem>
+
+  <!--  <cp-subsystem>-->
+<!--    <cp-member-count>3</cp-member-count>-->
+<!--    &lt;!&ndash;    <group-size>3</group-size>&ndash;&gt;-->
+<!--    &lt;!&ndash;    <session-time-to-live-seconds>300</session-time-to-live-seconds>&ndash;&gt;-->
+<!--    &lt;!&ndash;    <session-heartbeat-interval-seconds>5</session-heartbeat-interval-seconds>&ndash;&gt;-->
+<!--    &lt;!&ndash;    <missing-cp-member-auto-removal-seconds>14400</missing-cp-member-auto-removal-seconds>&ndash;&gt;-->
+<!--    &lt;!&ndash;    <fail-on-indeterminate-operation-state>false</fail-on-indeterminate-operation-state>&ndash;&gt;-->
+<!--    &lt;!&ndash;    <base-dir>/custom-cp-dir</base-dir>&ndash;&gt;-->
+<!--  </cp-subsystem>-->
+<!--  <network>-->
+<!--    <port auto-increment="true" port-count="100">5701</port>-->
+<!--    <outbound-ports>-->
+<!--      &lt;!&ndash;-->
+<!--      Allowed port range when connecting to other members.-->
+<!--      0 or * means the port provided by the system.-->
+<!--      &ndash;&gt;-->
+<!--      <ports>0</ports>-->
+<!--    </outbound-ports>-->
+<!--    <join>-->
+<!--      <multicast enabled="true">-->
+<!--        <multicast-group>224.2.2.3</multicast-group>-->
+<!--        <multicast-port>54327</multicast-port>-->
+<!--      </multicast>-->
+<!--      <tcp-ip enabled="false">-->
+<!--        <interface>127.0.0.1</interface>-->
+<!--        <member-list>-->
+<!--          <member>127.0.0.1</member>-->
+<!--        </member-list>-->
+<!--      </tcp-ip>-->
+<!--    </join>-->
+<!--  </network>-->
+<!--  <map name="default">-->
+<!--    <time-to-live-seconds>0</time-to-live-seconds>-->
+<!--  </map>-->
+</hazelcast>

@@ -1,0 +1,13 @@
+services:
+  vertx-app:
+    image: sample/vertx-java-fat
+    build:
+      context: .
+    ports:
+      - "8888-8890:8080"
+    networks:
+      - vertx-network
+
+networks:
+  vertx-network:
+    driver: bridge

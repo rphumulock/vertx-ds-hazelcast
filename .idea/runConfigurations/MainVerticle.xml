@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MainVerticle" type="Application" factoryName="Application">
+    <envs>
+      <env name="JDK_JAVA_OPTIONS" value="--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED -Dhazelcast.diagnostics.enabled=true " />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="io.vertx.core.Launcher" />
+    <module name="cluster-project" />
+    <option name="PROGRAM_PARAMETERS" value="run com.example.cluster_project.MainVerticle --redeploy=**/*.class --launcher-class=io.vertx.core.Launcher" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
