@@ -9,6 +9,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.Session;
@@ -91,15 +92,53 @@ public class HTTPServer extends AbstractVerticle {
     // Listen for responses from the consumer manager service
     vertx.eventBus().consumer("consumer.response." + sessionId, msg -> {
       JsonObject body = (JsonObject) msg.body();
-      // Handle the message (e.g., send it via SSE to the client)
-      sendSSE(response, buildConfig(
-        UUID.randomUUID().toString(),
-        "#sensorUpdatesContainer",
-        DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
-        0,
-        Partials.sensorUpdate(body.getString("id"), body.getString("temp")).render(),
-        false
-      ));
+      String id = body.getString("id");
+      String temp = body.getString("temp");
+
+      vertx.sharedData().<String, String>getAsyncMap("sensorDataMap", res -> {
+        if (res.succeeded()) {
+          AsyncMap<String, String> sensorDataMap = res.result();
+          sensorDataMap.get(id, asyncResult -> {
+            if (asyncResult.succeeded() && asyncResult.result() == null) {
+              // ID does not exist, perform DELETE and APPEND
+              sensorDataMap.put(id, sessionId, putRes -> {
+                if (putRes.succeeded()) {
+                  sendSSE(response, buildConfig(
+                    UUID.randomUUID().toString(),
+                    "#" + id,
+                    DatastarUtils.MergeTypes.DELETE_ELEMENT.getType(),
+                    0,
+                    "<div></div>",
+                    false
+                  ));
+                  sendSSE(response, buildConfig(
+                    UUID.randomUUID().toString(),
+                    "#sensorUpdatesContainer",
+                    DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
+                    0,
+                    Partials.sensorUpdate(id, temp).render(),
+                    false
+                  ));
+                } else {
+                  logger.error("Failed to put ID into sensorDataMap", putRes.cause());
+                }
+              });
+            } else {
+              // ID exists, perform MORPH_ELEMENT
+              sendSSE(response, buildConfig(
+                UUID.randomUUID().toString(),
+                "#" + id,
+                DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
+                0,
+                Partials.sensorUpdate(id, temp).render(),
+                false
+              ));
+            }
+          });
+        } else {
+          logger.error("Failed to get sensorDataMap", res.cause());
+        }
+      });
     });
   }
 
@@ -110,6 +149,33 @@ public class HTTPServer extends AbstractVerticle {
 
     // Cleanup consumer
     consumerManagerService.cleanupConsumer(sessionId);
+
+    // Clear sensorDataMap entries associated with the session
+    vertx.sharedData().<String, String>getAsyncMap("sensorDataMap", res -> {
+      if (res.succeeded()) {
+        AsyncMap<String, String> sensorDataMap = res.result();
+        // Iterate through the map to find and remove entries associated with the session
+        sensorDataMap.entries(mapRes -> {
+          if (mapRes.succeeded()) {
+            mapRes.result().forEach((id, storedSessionId) -> {
+              if (storedSessionId.equals(sessionId)) {
+                sensorDataMap.remove(id, removeRes -> {
+                  if (removeRes.succeeded()) {
+                    logger.info("Removed sensor data for ID: {}", id);
+                  } else {
+                    logger.error("Failed to remove sensor data for ID: {}", id, removeRes.cause());
+                  }
+                });
+              }
+            });
+          } else {
+            logger.error("Failed to retrieve entries from sensorDataMap", mapRes.cause());
+          }
+        });
+      } else {
+        logger.error("Failed to get sensorDataMap", res.cause());
+      }
+    });
 
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
@@ -140,133 +206,10 @@ public class HTTPServer extends AbstractVerticle {
   }
 }
 
-
-//package com.example.cluster_project.verticles;
-//
-//import com.example.cluster_project.services.ConsumerService;
-//import com.example.cluster_project.ui.templates.Index;
-//import com.example.cluster_project.ui.partials.Partials;
-//import com.example.cluster_project.utils.DatastarUtils;
-//import com.example.cluster_project.utils.SSEConfig;
-//import io.vertx.core.AbstractVerticle;
-//import io.vertx.core.http.HttpServerResponse;
-//import io.vertx.core.json.JsonObject;
-//import io.vertx.ext.web.Router;
-//import io.vertx.ext.web.RoutingContext;
-//import io.vertx.ext.web.Session;
-//import io.vertx.ext.web.handler.SessionHandler;
-//import io.vertx.ext.web.sstore.ClusteredSessionStore;
-//import io.vertx.ext.web.sstore.SessionStore;
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
-//
-//import java.util.Date;
-//import java.util.UUID;
-//
-//import static com.example.cluster_project.utils.DatastarUtils.sendSSE;
-//import static com.example.cluster_project.utils.DatastarUtils.setHeaders;
-//
-//public class HTTPServer extends AbstractVerticle {
-//
-//  public static final String TEMPLATE = ""
-//    + "Session [%s] created on %s%n"
-//    + "%n"
-//    + "Page generated on %s%n";
-//
-//  private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
-//
-//  private ConsumerService consumerService;
-//
-//  @Override
-//  public void start(Promise<Void> startPromise) throws Exception {
-//    consumerService = new ConsumerService(vertx);
-//
-//    Router router = Router.router(vertx);
-//    JsonObject config = config();
-//    int port = config.getInteger("http.port", 8080);
-//
-//    // Set up the clustered session store
-//    SessionStore store = ClusteredSessionStore.create(vertx);
-//    router.route().handler(SessionHandler.create(store));
-//
-//    setupRoutes(router);
-//    vertx.createHttpServer()
-//      .requestHandler(router)
-//      .listen(port)
-//      .onSuccess(v -> {
-//        startPromise.complete();
-//        logger.info("HTTP server started successfully on: http://localhost:" + port);
-//      })
-//      .onFailure(startPromise::fail);
-//  }
-//
-//  private void setupRoutes(Router router) {
-//    router.get("/").handler(this::rootHandler);
-//    router.get("/subscribeSensorUpdates").handler(this::subscribeSensorUpdates);
-//    router.get("/unsubscribeSensorUpdates").handler(this::unsubscribeSensorUpdates);
-//  }
-//
-//  private void rootHandler(RoutingContext ctx) {
-//    Session session = ctx.session();
-//    session.computeIfAbsent("createdOn", s -> System.currentTimeMillis());
-//    String sessionId = session.id();
-//    Date createdOn = new Date(session.<Long>get("createdOn"));
-//    Date now = new Date();
-//    logger.info(String.format(TEMPLATE, sessionId, createdOn, now));
-//    DatastarUtils.sendHtmlResponse(ctx.response(), Index.getIndex());
-//  }
-//
-//  private void subscribeSensorUpdates(RoutingContext ctx) {
-//    HttpServerResponse response = setHeaders(ctx.response());
-//    String sessionId = ctx.session().id();
-//    sendSSE(response, buildConfig(
-//      UUID.randomUUID().toString(),
-//      "#subscribeContainer",
-//      DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
-//      0,
-//      Partials.unsubscribeSensorUpdates().render(),
-//      false
-//    ));
-//    consumerService.setupConsumer(sessionId, response);
-//  }
-//
-//  private void unsubscribeSensorUpdates(RoutingContext routingContext) {
-//    HttpServerResponse response = routingContext.response();
-//    setHeaders(response);
-//    String sessionId = routingContext.session().id();
-//    consumerService.cleanupConsumer(sessionId);
-//
-//    sendSSE(response, buildConfig(
-//      UUID.randomUUID().toString(),
-//      "#unsubscribeContainer",
-//      DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
-//      0,
-//      Partials.subscribeSensorUpdates().render(),
-//      true
-//    ));
-//  }
-//
-//  private SSEConfig buildConfig(
-//    String withId,
-//    String withSelector,
-//    String withMergeType,
-//    Number withSettle,
-//    String withFragment,
-//    boolean withEnd
-//  ) {
-//    return new SSEConfig.Builder()
-//      .withId(withId)
-//      .withSelector(withSelector)
-//      .withMergeType(withMergeType)
-//      .withSettle(withSettle)
-//      .withFragment(withFragment)
-//      .withEnd(withEnd)
-//      .build();
-//  }
-//}
+// -----------------------------
 //
 //
-////package com.example.cluster_project.verticles;
+// package com.example.cluster_project.verticles;
 ////
 ////import com.example.cluster_project.ui.templates.Index;
 ////import com.example.cluster_project.ui.partials.Partials;

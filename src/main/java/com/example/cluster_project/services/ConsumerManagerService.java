@@ -27,6 +27,8 @@ public class ConsumerManagerService {
   public void setupConsumer(String sessionId) {
     sharedData.<String, String>getAsyncMap("consumerSessions", res -> {
       if (res.succeeded()) {
+
+        // Register Consumer Stream
         AsyncMap<String, String> consumerSessions = res.result();
         MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("sensor.updates", msg -> {
           JsonObject response = new JsonObject()
@@ -43,6 +45,37 @@ public class ConsumerManagerService {
             logger.error("Failed to setup consumer for session: {}", sessionId, putRes.cause());
           }
         });
+
+        consumer.endHandler(unused -> {
+          sharedData.<String, String>getAsyncMap("sensorDataMap", sensorRes -> {
+            if (sensorRes.succeeded()) {
+              AsyncMap<String, String> sensorDataMap = sensorRes.result();
+              // Iterate through the map to find and remove entries associated with the session
+              sensorDataMap.entries(mapRes -> {
+                if (mapRes.succeeded()) {
+                  mapRes.result().forEach((id, storedSessionId) -> {
+                    if (storedSessionId.equals(sessionId)) {
+                      sensorDataMap.remove(id, removeRes -> {
+                        if (removeRes.succeeded()) {
+                          logger.info("Removed sensor data for ID: {}", id);
+                        } else {
+                          logger.error("Failed to remove sensor data for ID: {}", id, removeRes.cause());
+                        }
+                      });
+                    }
+                  });
+                } else {
+                  logger.error("Failed to retrieve entries from sensorDataMap", mapRes.cause());
+                }
+              });
+            } else {
+              logger.error("Failed to get sensorDataMap", sensorRes.cause());
+            }
+          });
+
+          cleanupConsumer(sessionId);
+        });
+
       } else {
         logger.error("Failed to access consumerSessions map", res.cause());
       }
