@@ -3,11 +3,8 @@ package com.example.cluster_project;
 import com.example.cluster_project.verticles.HTTPServer;
 import com.example.cluster_project.verticles.HeatSensor;
 import com.example.cluster_project.verticles.SensorData;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
+import io.vertx.core.*;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.shareddata.AsyncMap;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import org.slf4j.Logger;
@@ -39,12 +36,13 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-    deployHTTPServerVerticle()
-      .compose(id -> deployHeatSensorVerticle())
-      .compose(id -> deploySensorDataVerticle())
+    JsonObject config = new JsonObject();
+    config.put("deploymentID", deploymentID());
+    deployHTTPServerVerticle(config)
+      .compose(id -> deployHeatSensorVerticle(config))
+      .compose(id -> deploySensorDataVerticle(config))
       .onComplete(res -> {
         if (res.succeeded()) {
-          storeDeploymentIDInSharedData();
           startPromise.complete();
           logger.info("All verticles deployed successfully");
         } else {
@@ -54,41 +52,48 @@ public class MainVerticle extends AbstractVerticle {
       });
   }
 
-  private Future<String> deployHTTPServerVerticle() {
+  private Future<String> deployHTTPServerVerticle(JsonObject config) {
     Promise<String> promise = Promise.promise();
     vertx.deployVerticle(new HTTPServer(), promise);
     return promise.future();
   }
 
-  private Future<String> deployHeatSensorVerticle() {
+  private Future<String> deployHeatSensorVerticle(JsonObject config) {
     Promise<String> promise = Promise.promise();
-    vertx.deployVerticle(new HeatSensor(), promise);
+    vertx.deployVerticle(new HeatSensor(), new DeploymentOptions().setInstances(3), promise);
     return promise.future();
   }
 
-  private Future<String> deploySensorDataVerticle() {
+  private Future<String> deploySensorDataVerticle(JsonObject config) {
     Promise<String> promise = Promise.promise();
     vertx.deployVerticle(new SensorData(), promise);
     return promise.future();
   }
 
-  private void storeDeploymentIDInSharedData() {
-    vertx.sharedData().<String, String>getAsyncMap("deploymentIDs", res -> {
-      if (res.succeeded()) {
-        AsyncMap<String, String> map = res.result();
-        String deploymentID = deploymentID();
-        map.put("MainVerticle", deploymentID, putRes -> {
-          if (putRes.succeeded()) {
-            logger.info("Stored MainVerticle deployment ID: {}", deploymentID);
-          } else {
-            logger.error("Failed to store MainVerticle deployment ID", putRes.cause());
-          }
-        });
-      } else {
-        logger.error("Failed to get AsyncMap for deployment IDs", res.cause());
-      }
-    });
-  }
+//  private Future<String> deployVerticle(Verticle verticle, JsonObject config) {
+//    Promise<String> promise = Promise.promise();
+//    DeploymentOptions options = new DeploymentOptions().setConfig(config);
+//    vertx.deployVerticle(verticle, options, promise);
+//    return promise.future();
+//  }
+
+//  private void storeDeploymentID() {
+//    vertx.sharedData().<String, String>getAsyncMap("deploymentIDs", res -> {
+//      if (res.succeeded()) {
+//        AsyncMap<String, String> map = res.result();
+//        String deploymentID = deploymentID();
+//        map.put("MainVerticle", deploymentID, putRes -> {
+//          if (putRes.succeeded()) {
+//            logger.info("Stored MainVerticle deployment ID: {}", deploymentID);
+//          } else {
+//            logger.error("Failed to store MainVerticle deployment ID", putRes.cause());
+//          }
+//        });
+//      } else {
+//        logger.error("Failed to get AsyncMap for deployment IDs", res.cause());
+//      }
+//    });
+//  }
 
 }
 

@@ -8,13 +8,13 @@ import static j2html.TagCreator.*;
 
 public class Index {
 
-  public static String getIndex() {
+  public static String getIndex(String deploymentID) {
     var title = "Home";
     var store = new JsonObject().put("test", "yay");
     return document(html(
         SharedPartials.sharedHead(title),
         body(
-          h2("Datastar Example"),
+          h2("Datastar Example: " +deploymentID),
           main().
             withClass("container").
             withId("main").

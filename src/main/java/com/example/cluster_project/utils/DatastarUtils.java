@@ -29,15 +29,15 @@ public class DatastarUtils {
 
   public static HttpServerResponse setHeaders(HttpServerResponse response) {
     return response
-        .putHeader("Cache-Control", "no-cache")
-        .putHeader("Content-Type", "text/event-stream")
-        .putHeader("Connection", "keep-alive")
-        .setChunked(true);
+      .putHeader("Cache-Control", "no-cache")
+      .putHeader("Content-Type", "text/event-stream")
+      .putHeader("Connection", "keep-alive")
+      .setChunked(true);
   }
 
   public static void sendHtmlResponse(HttpServerResponse response, String htmlContent) {
     response.putHeader("Content-Type", "text/html; charset=utf-8") // Set the content type to HTML
-        .end(htmlContent); // Send the provided HTML content and close the response
+      .end(htmlContent); // Send the provided HTML content and close the response
   }
 
   public static void sendSSE(HttpServerResponse response, SSEConfig config) {
@@ -72,6 +72,7 @@ public class DatastarUtils {
     message.append("\n\n");
 
 //    logger.info("\n\n{}", message);
+
     response.write(message.toString());
 
     if (config.isEnd()) {
