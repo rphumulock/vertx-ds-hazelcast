@@ -10,18 +10,17 @@ public class Index {
 
   public static String getIndex(String deploymentID) {
     var title = "Home";
-    var store = new JsonObject().put("test", "yay");
+    var store = new JsonObject().put("verticleSelection", "1");
     return document(html(
         SharedPartials.sharedHead(title),
         body(
-          h2("Datastar Example: " +deploymentID),
-          main().
+          h2("Cluster ID: " + deploymentID),
+          main(
+            Partials.deploymentSelection()
+          ).
             withClass("container").
             withId("main").
-            withData("store", "{ input: \"\", show: false }").
-            with(
-              Partials.subscribeSensorUpdates()
-            )
+            withData("store", store.encode())
         )
       )
     );

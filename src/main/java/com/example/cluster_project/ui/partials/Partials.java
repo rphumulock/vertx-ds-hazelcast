@@ -1,7 +1,5 @@
 package com.example.cluster_project.ui.partials;
 
-import com.example.cluster_project.verticles.HeatSensor;
-import com.example.cluster_project.verticles.SensorData;
 import j2html.tags.DomContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,17 +19,21 @@ public class Partials {
 
   public static DomContent unsubscribeSensorUpdates() {
     return div(
-      button().withText("Unsubscribe to Sensor Updates").withData("on-click", "$$get('/unsubscribeSensorUpdates')"),
+      button()
+        .withText("Unsubscribe to Sensor Updates")
+        .withData("on-click", "$$get('/unsubscribeSensorUpdates')"),
       Partials.sensorUpdatesContainer()
     ).withId("unsubscribeContainer");
   }
 
   public static DomContent sensorUpdatesContainer() {
-    return div().withText("Sensor Updates:").withId("sensorUpdatesContainer");
+    return div()
+      .withText("Sensor Updates:")
+      .withId("sensorUpdatesContainer");
   }
 
   public static DomContent sensorUpdate(String deploymentID, String id, String temp) {
-    logger.debug("SensorData from: {} id: {}temp: {}", deploymentID, id, temp);
+    logger.debug("SensorData from: {} id: {} temp: {}", deploymentID, id, temp);
     return div(
       div()
         .withStyle("border: 1px solid black")
@@ -48,5 +50,26 @@ public class Partials {
   public static DomContent averageTemp(String message) {
     return div(
       text(message)).withId("averageTemp");
+  }
+
+  public static DomContent deploymentSelection() {
+    return div()
+      .withId("deploymentContainer")
+      .with(
+        label("Verticle Selection:")
+          .attr("for", "mySelectId")
+          .withStyle("display: block;"),
+        select()
+          .withText("Verticle Selection")
+          .withData("model", "verticleSelection")
+          .with(
+            option("Heat Sensor").withValue("1"),
+            option("HTTP Server").withValue("2"),
+            option("Sensor Data").withValue("3")
+          ),
+        button().withId("deployVerticleSelection")
+          .withText("Deploy Verticle Selection")
+          .withData("on-click", "$$post('/deployVerticleSelection')")
+      );
   }
 }

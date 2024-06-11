@@ -5,7 +5,7 @@
     </envs>
     <option name="MAIN_CLASS_NAME" value="io.vertx.core.Launcher" />
     <module name="cluster-project" />
-    <option name="PROGRAM_PARAMETERS" value="run com.example.cluster_project.MainVerticle --redeploy=**/*.class --launcher-class=io.vertx.core.Launcher" />
+    <option name="PROGRAM_PARAMETERS" value="run com.example.cluster_project.MainVerticle --redeploy=**/*.class --launcher-class=io.vertx.core.Launcher --cluster" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

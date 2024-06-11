@@ -681,11 +681,16 @@ import com.example.cluster_project.utils.DatastarUtils;
 import com.example.cluster_project.utils.SSEConfig;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
+import io.vertx.core.Verticle;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.core.shareddata.AsyncMap;
+import io.vertx.core.shareddata.SharedData;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 
@@ -727,6 +732,7 @@ public class HTTPServer extends AbstractVerticle {
     router.route().handler(SessionHandler.create(store));
 
     setupRoutes(router);
+
     vertx.createHttpServer()
       .requestHandler(router)
       .listen(port)
@@ -736,24 +742,35 @@ public class HTTPServer extends AbstractVerticle {
 
   private void setupRoutes(Router router) {
     router.get("/").handler(this::rootHandler);
+    router.route("/css/*").handler(this::stylesHandler);
+
     router.get("/subscribeSensorUpdates").handler(this::subscribeSensorUpdates);
     router.get("/unsubscribeSensorUpdates").handler(this::unsubscribeSensorUpdates);
+
+    router.post("/deployVerticleSelection").handler(this::deployVerticleSelection);
+
   }
 
-  private void rootHandler(RoutingContext ctx) {
-    Session session = ctx.session();
+  private void stylesHandler(RoutingContext routingContext) {
+    String path = routingContext.request().path();
+    routingContext.response().sendFile("public" + path);
+  }
+
+  private void rootHandler(RoutingContext routingContext) {
+    Session session = routingContext.session();
     session.computeIfAbsent("createdOn", s -> System.currentTimeMillis()); // (3)
     String sessionId = session.id();
     Date createdOn = new Date(session.<Long>get("createdOn"));
     Date now = new Date();
     logger.info(String.format(TEMPLATE, sessionId, createdOn, now)); // (4)
     String deploymentID = config().getString("deploymentID");
-    DatastarUtils.sendHtmlResponse(ctx.response(), Index.getIndex(deploymentID));
+    DatastarUtils.sendHtmlResponse(routingContext.response(), Index.getIndex(deploymentID));
   }
 
-  private void subscribeSensorUpdates(RoutingContext ctx) {
-    HttpServerResponse response = setHeaders(ctx.response());
-    String sessionId = ctx.session().id();
+
+  private void subscribeSensorUpdates(RoutingContext routingContext) {
+    HttpServerResponse response = setHeaders(routingContext.response());
+    String sessionId = routingContext.session().id();
     subscribeButtonUI(response);
     setupConsumer(sessionId, response);
   }
@@ -792,7 +809,7 @@ public class HTTPServer extends AbstractVerticle {
   }
 
   private void setupConsumer(String sessionId, HttpServerResponse response) {
-    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("sensor.updates", msg -> consumeMessage(msg, sessionId, response));
+    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("sensor.updates", msg -> consumeMessage(msg, response));
     consumers.put(sessionId, consumer);
     connections.put(sessionId, response);
     consumer.endHandler(unused -> onEndConsumer(response));
@@ -801,7 +818,7 @@ public class HTTPServer extends AbstractVerticle {
     });
   }
 
-  private void consumeMessage(Message<JsonObject> msg, String sessionId, HttpServerResponse response) {
+  private void consumeMessage(Message<JsonObject> msg, HttpServerResponse response) {
     if (!response.closed()) {
       String id = msg.body().getString("id");
       String temp = msg.body().getString("temp");
@@ -874,6 +891,53 @@ public class HTTPServer extends AbstractVerticle {
         }
       });
     }
+  }
+
+
+  private void deployVerticleSelection(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    setHeaders(response);
+
+    // Read the body asynchronously
+    routingContext.request().bodyHandler(body -> {
+      // Convert the body to a string (or any other format you need)
+      JsonObject jsonBody = body.toJsonObject();
+      String selection = jsonBody.getString("verticleSelection");
+
+      String verticleName = HeatSensor.class.getName();
+      if (selection.equals("2")) {
+        verticleName = HTTPServer.class.getName();
+      } else if (selection.equals("3")) {
+        verticleName = SensorData.class.getName();
+      }
+
+      addVerticleHandler(response, verticleName);
+    });
+  }
+
+  private void addVerticleHandler(HttpServerResponse response, String verticleName) {
+    vertx.deployVerticle(verticleName, res -> {
+      if (res.succeeded()) {
+        String deploymentID = res.result();
+        SharedData sharedData = vertx.sharedData();
+        sharedData.<String, String>getAsyncMap("verticleRegistry", mapRes -> {
+          if (mapRes.succeeded()) {
+            AsyncMap<String, String> verticleRegistry = mapRes.result();
+            verticleRegistry.put(deploymentID, verticleName, putRes -> {
+              if (putRes.succeeded()) {
+                response.setStatusCode(200).end("Verticle added: " + verticleName + " with ID: " + deploymentID);
+              } else {
+                response.setStatusCode(500).end("Failed to register verticle: " + verticleName);
+              }
+            });
+          } else {
+            response.setStatusCode(500).end("Failed to access verticle registry");
+          }
+        });
+      } else {
+        response.setStatusCode(500).end("Failed to add verticle: " + verticleName);
+      }
+    });
   }
 
 }
