@@ -680,10 +680,8 @@ import com.example.cluster_project.ui.partials.Partials;
 import com.example.cluster_project.utils.DatastarUtils;
 import com.example.cluster_project.utils.SSEConfig;
 
-import io.vertx.core.AbstractVerticle;
+import io.vertx.core.*;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Promise;
-import io.vertx.core.Verticle;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpServerResponse;
@@ -916,28 +914,48 @@ public class HTTPServer extends AbstractVerticle {
   }
 
   private void addVerticleHandler(HttpServerResponse response, String verticleName) {
+
+
+    // deploy new verticle
+    // add vertical count to shared counter
+    // add deployment id and verticle name to shared map
+    // append new datastar element for type
+    // append stop button for deployed ID to ds UI element for type
+
+
     vertx.deployVerticle(verticleName, res -> {
       if (res.succeeded()) {
         String deploymentID = res.result();
         SharedData sharedData = vertx.sharedData();
-        sharedData.<String, String>getAsyncMap("verticleRegistry", mapRes -> {
-          if (mapRes.succeeded()) {
-            AsyncMap<String, String> verticleRegistry = mapRes.result();
-            verticleRegistry.put(deploymentID, verticleName, putRes -> {
-              if (putRes.succeeded()) {
-                response.setStatusCode(200).end("Verticle added: " + verticleName + " with ID: " + deploymentID);
-              } else {
-                response.setStatusCode(500).end("Failed to register verticle: " + verticleName);
-              }
-            });
-          } else {
-            response.setStatusCode(500).end("Failed to access verticle registry");
-          }
-        });
+        sharedData.<String, String>getAsyncMap("verticleRegistry", this::addVerticleToRegistry);
       } else {
         response.setStatusCode(500).end("Failed to add verticle: " + verticleName);
       }
     });
+  }
+
+  private void addVerticleToRegistry(AsyncResult<String> ar) {
+
+      if (ar.succeeded()) {
+        AsyncMap<String, String> verticleRegistry = ar.result();
+        verticleRegistry.put(deploymentID, verticleName, putRes -> {
+          if (putRes.succeeded()) {
+            response.setStatusCode(200).end("Verticle added: " + verticleName + " with ID: " + deploymentID);
+            sendSSE(response, buildConfig(
+              UUID.randomUUID().toString(),
+              "#sensorUpdatesContainer",
+              DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
+              0,
+              Partials.sensorUpdate(deploymentID, id, temp).render(),
+              false
+            ));
+          } else {
+            response.setStatusCode(500).end("Failed to register verticle: " + verticleName);
+          }
+        });
+      } else {
+        response.setStatusCode(500).end("Failed to access verticle registry");
+      }
   }
 
 }
