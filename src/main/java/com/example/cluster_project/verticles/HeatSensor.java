@@ -1,25 +1,23 @@
 package com.example.cluster_project.verticles;
 
-import com.example.cluster_project.MainVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
-import java.util.UUID;
 
 public class HeatSensor extends AbstractVerticle {
 
   private final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
 
   private final Random random = new Random();
-  private final String sensorId = "id_" + UUID.randomUUID();
+  //  private final String sensorId = "id_" + UUID.randomUUID();
   private double temperature = 21.0;
 
   @Override
   public void start() {
-    logger.debug("Start {}", getClass().getName());
+    logger.debug("Starting HeatSensor: {}", getClass().getName());
     scheduleNextUpdate();
   }
 
@@ -29,11 +27,16 @@ public class HeatSensor extends AbstractVerticle {
 
   private void update(long timerId) {
     temperature = temperature + (delta() / 10);
-    String deploymentID = config().getString("deploymentID");
+    String nodeDeploymentID = config().getString("nodeDeploymentID");
+    String heatSensorDeploymentID = deploymentID();
+    String sensorId = "id_" + deploymentID();
+
     JsonObject payload = new JsonObject()
-      .put("deploymentID", deploymentID)
+      .put("nodeDeploymentID", nodeDeploymentID)
+      .put("heatSensorDeploymentID", heatSensorDeploymentID)
       .put("id", sensorId)
       .put("temp", temperature);
+
     vertx.eventBus().publish("sensor.updates", payload);
     scheduleNextUpdate();
   }
@@ -45,5 +48,6 @@ public class HeatSensor extends AbstractVerticle {
       return -random.nextGaussian();
     }
   }
+
 }
 

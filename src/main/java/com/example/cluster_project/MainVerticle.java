@@ -35,7 +35,8 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     JsonObject config = new JsonObject();
-    config.put("deploymentID", deploymentID());
+    config.put("nodeDeploymentID", deploymentID());
+
     deployHTTPServerVerticle(config).onComplete(res -> {
       if (res.succeeded()) {
         startPromise.complete();

@@ -8,15 +8,16 @@ import static j2html.TagCreator.*;
 
 public class Index {
 
-  public static String getIndex(String deploymentID) {
-    var title = "Home";
+  public static String getIndex(String nodeDeploymentID) {
+    var title = "Cluster: " + nodeDeploymentID;
     var store = new JsonObject().put("verticleSelection", "1");
     return document(html(
         SharedPartials.sharedHead(title),
         body(
-          h2("Cluster ID: " + deploymentID),
+          h4("Current Node: " + nodeDeploymentID),
           main(
-            Partials.deploymentSelection()
+            Partials.deploymentSelectionTemplate(),
+            Partials.nodeContainerTemplate(nodeDeploymentID)
           ).
             withClass("container").
             withId("main").
