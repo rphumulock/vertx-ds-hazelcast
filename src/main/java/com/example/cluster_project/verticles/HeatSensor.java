@@ -12,7 +12,6 @@ public class HeatSensor extends AbstractVerticle {
   private final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
 
   private final Random random = new Random();
-  //  private final String sensorId = "id_" + UUID.randomUUID();
   private double temperature = 21.0;
 
   @Override
@@ -29,12 +28,10 @@ public class HeatSensor extends AbstractVerticle {
     temperature = temperature + (delta() / 10);
     String nodeDeploymentID = config().getString("nodeDeploymentID");
     String heatSensorDeploymentID = deploymentID();
-    String sensorId = "id_" + heatSensorDeploymentID;
 
     JsonObject payload = new JsonObject()
       .put("nodeDeploymentID", nodeDeploymentID)
       .put("heatSensorDeploymentID", heatSensorDeploymentID)
-      .put("id", sensorId)
       .put("temp", temperature);
 
     vertx.eventBus().publish("sensor.updates", payload);
