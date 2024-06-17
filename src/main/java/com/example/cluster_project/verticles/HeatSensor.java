@@ -29,7 +29,7 @@ public class HeatSensor extends AbstractVerticle {
     temperature = temperature + (delta() / 10);
     String nodeDeploymentID = config().getString("nodeDeploymentID");
     String heatSensorDeploymentID = deploymentID();
-    String sensorId = "id_" + deploymentID();
+    String sensorId = "id_" + heatSensorDeploymentID;
 
     JsonObject payload = new JsonObject()
       .put("nodeDeploymentID", nodeDeploymentID)

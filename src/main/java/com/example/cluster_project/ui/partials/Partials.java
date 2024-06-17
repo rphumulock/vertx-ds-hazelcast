@@ -12,25 +12,36 @@ public class Partials {
 
   public static DomContent subscribeHeatSensorUpdatesTemplate(String heatSensorDeploymentID) {
     return div(
-      button("Subscribe to Sensor Updates")
-        .withData("on-click", "$$post('/subscribeSensorUpdates/" + heatSensorDeploymentID + "')")
-        .withId("subscribeSensorUpdates"))
-      .withId("subscribeContainer");
+      button()
+        .withData(
+          "on-click",
+          "$$get('/heatSensor/" + heatSensorDeploymentID + "/subscribe')"
+        )
+        .withId("subscribeHeatSensorUpdatesButton-" + heatSensorDeploymentID)
+        .withStyle("height: 100%; border-radius: 50%; margin: auto 5px; background-color: red;")
+    )
+      .withId("subscribeHeatSensorContainer-" + heatSensorDeploymentID)
+      .withStyle("display: flex; align-items: center;");
   }
 
-  public static DomContent unsubscribeSensorUpdates(String sensorID) {
+  public static DomContent unsubscribeHeatSensorTemplate(String heatSensorDeploymentID) {
     return div(
       button()
-        .withText("Unsubscribe to Sensor Updates")
-        .withData("on-click", "$$post('/unsubscribeSensorUpdates/" + sensorID + "')"),
-      Partials.sensorUpdatesContainer()
-    ).withId("unsubscribeContainer");
+        .withData(
+          "on-click",
+          "$$get('/heatSensor/" + heatSensorDeploymentID + "/unsubscribe')"
+        )
+        .withId("unsubscribeHeatSensorUpdatesButton-" + heatSensorDeploymentID)
+        .withStyle("height: 100%; border-radius: 50%; margin: auto 5px; background-color: green;"),
+      Partials.sensorUpdatesContainer(heatSensorDeploymentID)
+    )
+      .withId("unsubscribeHeatSensorContainer-" + heatSensorDeploymentID)
+      .withStyle("display: flex; align-items: center;");
   }
 
-  public static DomContent sensorUpdatesContainer() {
+  public static DomContent sensorUpdatesContainer(String heatSensorDeploymentID) {
     return div()
-      .withText("Sensor Updates:")
-      .withId("sensorUpdatesContainer");
+      .withId("heatSensorUpdatesContainer-" + heatSensorDeploymentID);
   }
 
   public static DomContent sensor(String sensorDeploymentID) {
@@ -44,11 +55,11 @@ public class Partials {
         .withStyle("border: 1px dotted black; margin: 5px 0px; padding: 5px;");
   }
 
-  public static DomContent sensorUpdate(String deploymentID, String id, String temp) {
-    logger.debug("SensorData from: {} id: {} temp: {}", deploymentID, id, temp);
+  public static DomContent sensorUpdate(String nodeDeploymentID, String id, String temp) {
+    logger.debug("SensorData from: {} id: {} temp: {}", nodeDeploymentID, id, temp);
     return div(
-      div().withText("Sensor ID: " + id),
-      div().withText("Sensor Temp: " + temp)
+      div()
+        .withText("Temperature: " + temp)
     )
       .withStyle("border: 1px solid black")
       .withId(id);
@@ -65,12 +76,13 @@ public class Partials {
   public static DomContent heatSensorTemplate(String heatSensorDeploymentID) {
     logger.debug("Creating Sensor for: {}", heatSensorDeploymentID);
     return div(
+      subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID),
       div()
-        .withText("Heat Sensor: " + heatSensorDeploymentID),
-      subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID)
+        .withText("Heat Sensor-" + heatSensorDeploymentID)
+        .withId("heatSensor-" + heatSensorDeploymentID)
     )
       .withId("heatSensorContainer-" + heatSensorDeploymentID)
-      .withStyle("border: 3px dotted black; margin: 5px 0px; padding: 5px; font-size: small");
+      .withStyle("border: 3px dotted black; margin: 5px 5px; padding: 5px; font-size: small; display: flex;");
   }
 
   public static DomContent averageTemp(String message) {

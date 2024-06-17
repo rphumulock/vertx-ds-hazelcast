@@ -99,7 +99,7 @@ public class DatastarUtils {
   }
 
   // Sensor Data
-  public static void addSensorData(HttpServerResponse response, String deploymentID, String id, String temp) {
+  public static void addSensorData(HttpServerResponse response, String heatSensorDeploymentID, String id, String temp) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#" + id,
@@ -109,10 +109,10 @@ public class DatastarUtils {
     ));
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
-      "#sensorUpdatesContainer",
+      "#heatSensorUpdatesContainer-" + heatSensorDeploymentID,
       DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
       0,
-      Partials.sensorUpdate(deploymentID, id, temp).render()
+      Partials.sensorUpdate(heatSensorDeploymentID, id, temp).render()
     ));
   }
 
@@ -158,23 +158,23 @@ public class DatastarUtils {
     ));
   }
 
-  public static void subscribeHeatSensorTemplate(HttpServerResponse response, String heatSensorDeploymentID) {
+  public static void heatSensorSubscribe(HttpServerResponse response, String heatSensorDeploymentID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
-      "#heatSensorContainer-" + heatSensorDeploymentID,
+      "#subscribeHeatSensorContainer-" + heatSensorDeploymentID,
       DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.unsubscribeSensorUpdates(heatSensorDeploymentID).render()
+      Partials.unsubscribeHeatSensorTemplate(heatSensorDeploymentID).render()
     ));
   }
 
-  public static void unsubscribeHeatSensorTemplate(HttpServerResponse response, String sensorID) {
+  public static void heatSensorUnsubscribe(HttpServerResponse response, String heatSensorDeploymentID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
-      "#unsubscribeContainer",
+      "#unsubscribeHeatSensorContainer-" + heatSensorDeploymentID,
       DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.subscribeHeatSensorUpdatesTemplate(sensorID).render()
+      Partials.subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID).render()
     ));
   }
 
