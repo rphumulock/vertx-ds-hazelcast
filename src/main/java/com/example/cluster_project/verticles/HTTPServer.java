@@ -784,6 +784,9 @@ import org.slf4j.LoggerFactory;
 
 import static com.example.cluster_project.utils.DatastarUtils.*;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class HTTPServer extends AbstractVerticle {
 
   public static final String TEMPLATE = ""
@@ -791,10 +794,9 @@ public class HTTPServer extends AbstractVerticle {
     + "%n"
     + "Page generated on %s%n";
 
-  private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
+  SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a");
 
-//  private final Map<String, MessageConsumer<JsonObject>> consumers = new ConcurrentHashMap<>();
-//  private final Map<String, HttpServerResponse> connections = new ConcurrentHashMap<>();
+  private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
 
   Set<String> externalNodes = Collections.newSetFromMap(new ConcurrentHashMap<>());
   Set<String> heatSensorData = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -998,15 +1000,15 @@ public class HTTPServer extends AbstractVerticle {
    *****************************************************************************************/
 
   private void onStartConsumer(HttpServerResponse response, MessageConsumer<JsonObject> consumer, Session session) {
-//    consumers.put(sessionId, consumer);
-//    connections.put(sessionId, response);
-
     logger.info("sensor.updates consumer started for: {}", session.id());
-    response.endHandler(unused -> cleanupConsumer(consumer, session));
-    consumer.endHandler(this::onEndConsumer);
+    response.endHandler(unused -> onEndConnection(consumer, session));
+    consumer.endHandler(unused -> onEndConsumer(session));
   }
 
-  private void cleanupConsumer(MessageConsumer<JsonObject> consumer, Session session) {
+  private void onEndConnection(MessageConsumer<JsonObject> consumer, Session session) {
+    logger.debug("Connection ended for session: {} - created on: {}.",
+      session.id(), dateFormat.format(new Date(session.<Long>get("createdOn"))));
+
     if (consumer.isRegistered()) {
       consumer.unregister().onComplete(res -> {
         if (res.succeeded()) {
@@ -1020,8 +1022,9 @@ public class HTTPServer extends AbstractVerticle {
     }
   }
 
-  private void onEndConsumer(Void unused) {
-    logger.info("Closing consumer connection....");
+  private void onEndConsumer(Session session) {
+    logger.debug("Unregistering consumer for session: {} - created on: {}.",
+      session.id(), new Date(session.<Long>get("createdOn")));
   }
 
 //  private void cleanupConsumer(String sessionId) {
