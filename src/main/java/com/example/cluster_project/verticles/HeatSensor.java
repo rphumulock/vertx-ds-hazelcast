@@ -11,17 +11,22 @@ public class HeatSensor extends AbstractVerticle {
 
   private final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
 
+  private long timerID;
   private final Random random = new Random();
   private double temperature = 21.0;
 
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    scheduleNextUpdate();
+    this.startUpdates();
   }
 
-  private void scheduleNextUpdate() {
-    vertx.setTimer(random.nextInt(2000), this::update);
+  private void startUpdates() {
+    this.timerID = vertx.setTimer(random.nextInt(2000), this::update);
+  }
+
+  public void stopUpdates() {
+    vertx.cancelTimer(this.timerID);
   }
 
   private void update(long timerId) {
@@ -35,7 +40,7 @@ public class HeatSensor extends AbstractVerticle {
       .put("temp", temperature);
 
     vertx.eventBus().publish("sensor.updates", payload);
-    scheduleNextUpdate();
+    startUpdates();
   }
 
   private double delta() {

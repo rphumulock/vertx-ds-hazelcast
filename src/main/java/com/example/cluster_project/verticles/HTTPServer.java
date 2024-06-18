@@ -799,7 +799,10 @@ public class HTTPServer extends AbstractVerticle {
   private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
 
   Set<String> externalNodes = Collections.newSetFromMap(new ConcurrentHashMap<>());
-  Set<String> heatSensorData = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  Set<String> locallyDisplayedHeatSensors = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+  Map<String, HttpServerResponse> openConnections = new ConcurrentHashMap<>();
+
 
   @Override
   public void start() throws Exception {
@@ -821,8 +824,9 @@ public class HTTPServer extends AbstractVerticle {
   private void setupRoutes(Router router) {
     router.get("/").handler(this::rootHandler);
     router.get("/heatSensor/:heatSensorDeploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
-//    router.get("/heatSensor/:heatSensorDeploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
-    router.post("/deployVerticleSelection").handler(this::deployVerticleSelection);
+    router.get("/heatSensor/:heatSensorDeploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
+    router.post("/heatSensor/deploy").handler(this::heatSensorDeployHandler);
+    router.post("/heatSensor/undeploy").handler(this::heatSensorUndeployHandler);
   }
 
   /*****************************************************************************************
@@ -840,35 +844,9 @@ public class HTTPServer extends AbstractVerticle {
     DatastarUtils.sendHtmlResponse(response, Index.getIndex(nodeDeploymentID));
   }
 
-//  private void checkDeployedVerticles() {
-//    vertx.sharedData().<String, String>getAsyncMap("sensorDataMap", res -> {
-//      if (res.succeeded()) {
-//        AsyncMap<String, String> sensorDataMap = res.result();
-//        // Iterate through the map to find and remove entries associated with the session
-//        sensorDataMap.entries(mapRes -> {
-//          if (mapRes.succeeded()) {
-//            mapRes.result().forEach((id, storedSessionId) -> {
-//              if (storedSessionId.equals(sessionId)) {
-//                sensorDataMap.remove(id, removeRes -> {
-//                  if (removeRes.succeeded()) {
-//                    logger.info("Removed sensor data for ID: {}", id);
-//                  } else {
-//                    logger.error("Failed to remove sensor data for ID: {}", id, removeRes.cause());
-//                  }
-//                });
-//              }
-//            });
-//          } else {
-//            logger.error("Failed to retrieve entries from sensorDataMap", mapRes.cause());
-//          }
-//        });
-//      } else {
-//        logger.error("Failed to get sensorDataMap", res.cause());
-//      }
-//    });
-//  }
-
   private void heatSensorSubscribeHandler(RoutingContext routingContext) {
+    logger.debug("heatSensorSubscribeHandler");
+
     Session session = routingContext.session();
     HttpServerResponse response = routingContext.response();
     setHeaders(response);
@@ -880,50 +858,37 @@ public class HTTPServer extends AbstractVerticle {
     });
   }
 
-//  private void heatSensorUnsubscribeHandler(RoutingContext routingContext) {
-//    HttpServerResponse response = routingContext.response();
-//    setHeaders(response);
-//    routingContext.request().bodyHandler(body -> {
-//      Map<String, String> pathParams = routingContext.pathParams();
-//      String heatSensorDeploymentID = pathParams.get("heatSensorDeploymentID");
-//      String sessionId = routingContext.session().id();
-//
-//      // Close out everything
+  private void heatSensorUnsubscribeHandler(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    setHeaders(response);
+    routingContext.request().bodyHandler(body -> {
+      Map<String, String> pathParams = routingContext.pathParams();
+      String heatSensorDeploymentID = pathParams.get("heatSensorDeploymentID");
+      String sessionId = routingContext.session().id();
+
+      HttpServerResponse connection = openConnections.get(heatSensorDeploymentID);
+      connection.end();
+
+      // Close out everything
 //      HttpServerResponse consumerConnection = this.connections.get(sessionId);
 //      consumerConnection.end();
 //      response.endHandler(unused -> cleanupConsumer(sessionId));
 //      this.heatSensorData.clear();
-//      heatSensorUnsubscribe(response, heatSensorDeploymentID);
-//      response.end();
-//    });
-//  }
+      heatSensorUnsubscribe(response, heatSensorDeploymentID);
+      response.end();
+    });
+  }
 
-  private void deployVerticleSelection(RoutingContext routingContext) {
+  private void heatSensorDeployHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
     setHeaders(response);
-
     String nodeDeploymentID = config().getString("nodeDeploymentID");
-
-    // Read the body asynchronously
     routingContext.request().bodyHandler(body -> {
-      // Convert the body to a string (or any other format you need)
-      JsonObject jsonBody = body.toJsonObject();
-      String selection = jsonBody.getString("verticleSelection");
-
-      String verticleName;
-      if (selection.equals("2")) {
-        verticleName = HTTPServer.class.getName();
-      } else if (selection.equals("3")) {
-        verticleName = SensorData.class.getName();
-      } else {
-        verticleName = HeatSensor.class.getName();
-      }
-
       JsonObject config = new JsonObject();
       config.put("nodeDeploymentID", nodeDeploymentID);
       DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
-      vertx.deployVerticle(verticleName, options, res -> {
+      vertx.deployVerticle(HeatSensor.class.getName(), options, res -> {
         if (res.succeeded()) {
           String heatSensorDeploymentID = res.result();
           registerVerticle(nodeDeploymentID, heatSensorDeploymentID).onComplete(ar -> {
@@ -944,10 +909,14 @@ public class HTTPServer extends AbstractVerticle {
             }
           });
         } else {
-          response.setStatusCode(500).end("Failed to deploy verticle: " + verticleName);
+          response.setStatusCode(500).end("Failed to deploy verticle");
         }
       });
     });
+  }
+
+  private void heatSensorUndeployHandler(RoutingContext routingContext) {
+
   }
 
   /*****************************************************************************************
@@ -982,9 +951,9 @@ public class HTTPServer extends AbstractVerticle {
       if (!response.closed()) {
         String heatSensorDeploymentID = msg.body().getString("heatSensorDeploymentID");
         String temp = msg.body().getString("temp");
-        if (!this.heatSensorData.contains(heatSensorDeploymentID)) {
+        if (!this.locallyDisplayedHeatSensors.contains(heatSensorDeploymentID)) {
           logger.info("Heat Sensor ID not found: {}", heatSensorDeploymentID);
-          this.heatSensorData.add(heatSensorDeploymentID);
+          this.locallyDisplayedHeatSensors.add(heatSensorDeploymentID);
           addSensorData(response, heatSensorDeploymentID, temp);
         } else {
           logger.info("Heat Sensor ID found: {}", heatSensorDeploymentID);
@@ -1001,6 +970,7 @@ public class HTTPServer extends AbstractVerticle {
 
   private void onStartConsumer(HttpServerResponse response, MessageConsumer<JsonObject> consumer, Session session) {
     logger.info("sensor.updates consumer started for: {}", session.id());
+    this.openConnections.put()
     response.endHandler(unused -> onEndConnection(consumer, session));
     consumer.endHandler(unused -> onEndConsumer(session));
   }
@@ -1057,6 +1027,34 @@ public class HTTPServer extends AbstractVerticle {
       return Future.succeededFuture(incrementedCount);
     });
   }
+
+//  private void checkDeployedVerticles() {
+//    vertx.sharedData().<String, String>getAsyncMap("sensorDataMap", res -> {
+//      if (res.succeeded()) {
+//        AsyncMap<String, String> sensorDataMap = res.result();
+//        // Iterate through the map to find and remove entries associated with the session
+//        sensorDataMap.entries(mapRes -> {
+//          if (mapRes.succeeded()) {
+//            mapRes.result().forEach((id, storedSessionId) -> {
+//              if (storedSessionId.equals(sessionId)) {
+//                sensorDataMap.remove(id, removeRes -> {
+//                  if (removeRes.succeeded()) {
+//                    logger.info("Removed sensor data for ID: {}", id);
+//                  } else {
+//                    logger.error("Failed to remove sensor data for ID: {}", id, removeRes.cause());
+//                  }
+//                });
+//              }
+//            });
+//          } else {
+//            logger.error("Failed to retrieve entries from sensorDataMap", mapRes.cause());
+//          }
+//        });
+//      } else {
+//        logger.error("Failed to get sensorDataMap", res.cause());
+//      }
+//    });
+//  }
 
   private Future<Void> unregisterVerticle(String nodeDeploymentID) {
     SharedData sharedData = vertx.sharedData();

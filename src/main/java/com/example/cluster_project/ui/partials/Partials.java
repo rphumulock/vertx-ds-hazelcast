@@ -28,6 +28,17 @@ public class Partials {
    *  SUBSCRIBE / UNSUBSCRIBE
    *****************************************************************************************/
 
+  public static DomContent undeployHeatSensor(String heatSensorDeploymentID) {
+    return
+      button()
+        .withText("x")
+        .withData(
+          "on-click",
+          "$post('/heatSensor/" + heatSensorDeploymentID + "/undeploy')"
+        )
+        .withId("undeployHeatSensorButton-" + heatSensorDeploymentID);
+  }
+
   public static DomContent subscribeHeatSensorUpdatesTemplate(String heatSensorDeploymentID) {
     return div(
       button()
@@ -86,6 +97,7 @@ public class Partials {
   public static DomContent heatSensorTemplate(String heatSensorDeploymentID) {
     logger.debug("Creating Sensor for: {}", heatSensorDeploymentID);
     return div(
+//      undeployHeatSensor(heatSensorDeploymentID),
       div()
         .withText("Heat Sensor-" + heatSensorDeploymentID)
         .withId("heatSensor-" + heatSensorDeploymentID),
@@ -115,24 +127,27 @@ public class Partials {
 
 
   public static DomContent deploymentSelectionTemplate() {
-    return div()
-      .withId("deploymentContainer")
-      .with(
-        label("Verticle Selection:")
-          .attr("for", "mySelectId")
-          .withStyle("display: block;"),
-        select()
-          .withText("Verticle Selection")
-          .withData("model", "verticleSelection")
-          .with(
-            option("Heat Sensor").withValue("1"),
-            option("HTTP Server").withValue("2"),
-            option("Sensor Data").withValue("3")
-          ),
-        button().withId("deployVerticleSelection")
-          .withText("Deploy Verticle Selection")
-          .withData("on-click", "$$post('/deployVerticleSelection')")
-      );
+    return div(
+      button()
+        .withId("deployVerticleSelection")
+        .withText("Deploy Verticle Selection")
+        .withData("on-click", "$$post('/heatSensor/deploy')")
+    )
+      .withId("deploymentContainer");
+
+//      .with(
+//        label("Verticle Selection:")
+//          .attr("for", "mySelectId")
+//          .withStyle("display: block;"),
+//        select()
+//          .withText("Verticle Selection")
+//          .withData("model", "verticleSelection")
+//          .with(
+//            option("Heat Sensor").withValue("1"),
+//            option("HTTP Server").withValue("2"),
+//            option("Sensor Data").withValue("3")
+//          ),
+
   }
 }
 
