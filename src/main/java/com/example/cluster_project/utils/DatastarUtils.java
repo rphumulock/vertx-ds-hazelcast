@@ -160,7 +160,7 @@ public class DatastarUtils {
     ));
   }
 
-  public static void editSensorData(HttpServerResponse response, String heatSensorDeploymentID, String temp) {
+  public static void consumeSensorData(HttpServerResponse response, String heatSensorDeploymentID, String temp) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorUpdates-" + heatSensorDeploymentID,

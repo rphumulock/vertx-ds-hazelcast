@@ -18,7 +18,7 @@ public class Partials {
    *****************************************************************************************/
 
   public static DomContent nodeContainerTemplate(String nodeDeploymentID) {
-    logger.debug("Creating Container for cluster node {}", nodeDeploymentID);
+    logger.debug("nodeContainerTemplate - Node {}.", nodeDeploymentID);
     return div()
       .withId("nodeContainer-" + nodeDeploymentID)
       .withText("Cluster Deployment: " + nodeDeploymentID)
@@ -56,6 +56,7 @@ public class Partials {
   }
 
   public static DomContent onSubscribeHeatSensorTemplate(String heatSensorDeploymentID) {
+    logger.debug("onSubscribeHeatSensorTemplate - Sensor {}.", heatSensorDeploymentID);
     return div(
       button()
         .withData(
@@ -89,7 +90,7 @@ public class Partials {
    *****************************************************************************************/
 
   public static DomContent heatSensorsContainerTemplate(String nodeDeploymentID) {
-    logger.debug("Creating Heat Sensors Container for node: {}", nodeDeploymentID);
+    logger.debug("heatSensorsContainerTemplate - Node {}.", nodeDeploymentID);
     return div(
       div()
         .withText("Heat Sensors:"),
@@ -104,7 +105,7 @@ public class Partials {
   }
 
   public static DomContent heatSensorTemplate(String heatSensorDeploymentID) {
-    logger.debug("Creating Sensor for: {}", heatSensorDeploymentID);
+    logger.debug("heatSensorTemplate - Sensor  {}.", heatSensorDeploymentID);
     return div(
       div()
         .withText("Heat Sensor-" + heatSensorDeploymentID)
