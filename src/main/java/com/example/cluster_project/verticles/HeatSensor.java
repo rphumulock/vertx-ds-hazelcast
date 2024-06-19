@@ -1,7 +1,10 @@
 package com.example.cluster_project.verticles;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.SharedData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,11 +21,44 @@ public class HeatSensor extends AbstractVerticle {
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    this.startUpdates();
+    JsonObject config = config();
+    String nodeDeploymentID = config.getString("nodeDeploymentID");
+    String heatSensorDeploymentID = deploymentID();
+    registerVerticle(nodeDeploymentID, heatSensorDeploymentID).onComplete(ar -> {
+
+      this.startUpdates();
+    });
+  }
+
+  private Future<Long> registerVerticle(String nodeDeploymentID, String heatSensorDeploymentID) {
+    SharedData sharedData = vertx.sharedData();
+
+    Future<Long> incrementFuture = sharedData.getCounter("heatSensorVerticleCount").compose(counter ->
+      counter.incrementAndGet()
+    );
+
+    Future<Void> mapUpdateFuture = sharedData.<String, String>getAsyncMap("verticleRegistry").compose(map ->
+      map.put(nodeDeploymentID, heatSensorDeploymentID).mapEmpty()
+    );
+
+    return CompositeFuture.all(incrementFuture, mapUpdateFuture).compose(result -> {
+      Long incrementedCount = result.resultAt(0);
+      return Future.succeededFuture(incrementedCount);
+    });
+  }
+
+
+  @Override
+  public void stop() {
+    stopUpdates();
   }
 
   private void startUpdates() {
-    this.timerID = vertx.setTimer(random.nextInt(2000), this::update);
+    try {
+      this.timerID = vertx.setTimer(random.nextInt(2000), this::update);
+    } catch (Exception e) {
+      logger.error("Failed to start HeatSensor timer", e);
+    }
   }
 
   public void stopUpdates() {
@@ -39,7 +75,7 @@ public class HeatSensor extends AbstractVerticle {
       .put("heatSensorDeploymentID", heatSensorDeploymentID)
       .put("temp", temperature);
 
-    vertx.eventBus().publish("sensor.updates", payload);
+    vertx.eventBus().publish("sensor.updates." + heatSensorDeploymentID, payload);
     startUpdates();
   }
 

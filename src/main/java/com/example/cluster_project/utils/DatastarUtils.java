@@ -1,6 +1,7 @@
 package com.example.cluster_project.utils;
 
 import com.example.cluster_project.ui.partials.Partials;
+import com.example.cluster_project.ui.templates.Index;
 import io.vertx.core.http.HttpServerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,6 +104,17 @@ public class DatastarUtils {
    *  NODE CONTAINERS
    *****************************************************************************************/
 
+  public static void getIndex(HttpServerResponse response, String nodeDeploymentID) {
+    sendSSE(response, buildConfig(
+      UUID.randomUUID().toString(),
+      "#main",
+      MergeTypes.APPEND_ELEMENT.getType(),
+      0,
+      Index.getIndex(nodeDeploymentID)
+    ));
+  }
+
+
   public static void addNodeContainer(HttpServerResponse response, String nodeDeploymentID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
@@ -117,24 +129,14 @@ public class DatastarUtils {
    * HEAT SENSOR SUBSCRIBE
    *****************************************************************************************/
 
-  public static void addHeatSensor(HttpServerResponse response, String nodeDeploymentID, String heatSensorDeploymentID, Long count) {
-    if (count == 1) {
-      sendSSE(response, DatastarUtils.buildConfig(
-        UUID.randomUUID().toString(),
-        "#nodeContainer-" + nodeDeploymentID,
-        DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
-        0,
-        Partials.heatSensorsContainerTemplate(nodeDeploymentID, heatSensorDeploymentID).render()
-      ));
-    } else {
-      sendSSE(response, DatastarUtils.buildConfig(
-        UUID.randomUUID().toString(),
-        "#heatSensorsContainer-" + nodeDeploymentID,
-        DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
-        0,
-        Partials.heatSensorTemplate(heatSensorDeploymentID).render()
-      ));
-    }
+  public static void addHeatSensor(HttpServerResponse response, String nodeDeploymentID, String heatSensorDeploymentID) {
+    sendSSE(response, DatastarUtils.buildConfig(
+      UUID.randomUUID().toString(),
+      "#heatSensorsContainer-" + nodeDeploymentID,
+      DatastarUtils.MergeTypes.APPEND_ELEMENT.getType(),
+      0,
+      Partials.heatSensorTemplate(heatSensorDeploymentID).render()
+    ));
   }
 
   /*****************************************************************************************

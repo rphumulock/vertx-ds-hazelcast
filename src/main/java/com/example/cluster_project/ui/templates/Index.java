@@ -16,8 +16,7 @@ public class Index {
         body(
           h4("Current Node: " + nodeDeploymentID),
           main(
-            Partials.deploymentSelectionTemplate(),
-            Partials.nodeContainerTemplate(nodeDeploymentID)
+            Partials.heatSensors()
           ).
             withClass("container").
             withId("main").
@@ -26,4 +25,5 @@ public class Index {
       )
     );
   }
+
 }

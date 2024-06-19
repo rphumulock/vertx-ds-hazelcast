@@ -1,5 +1,7 @@
 package com.example.cluster_project.ui.partials;
 
+import com.example.cluster_project.ui.templates.Index;
+import io.vertx.core.json.JsonObject;
 import j2html.tags.DomContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +30,7 @@ public class Partials {
    *  SUBSCRIBE / UNSUBSCRIBE
    *****************************************************************************************/
 
-  public static DomContent undeployHeatSensor(String heatSensorDeploymentID) {
+  public static DomContent undeployHeatSensorTemplate(String heatSensorDeploymentID) {
     return
       button()
         .withText("x")
@@ -62,10 +64,12 @@ public class Partials {
         )
         .withId("unsubscribeHeatSensorUpdatesButton-" + heatSensorDeploymentID)
         .withStyle("height: 100%; border-radius: 50%; margin: auto 5px; background-color: green;"),
-      div()
-        .withText("Temperature:")
-        .withStyle("margin: 0px 5px; display: flex"),
-      div()
+      div(
+        text("Temperature: "),
+        div()
+          .withId("heatSensorUpdates-" + heatSensorDeploymentID)
+      )
+        .withStyle("display: flex")
         .withId("heatSensorUpdatesContainer-" + heatSensorDeploymentID)
     )
       .withId("unsubscribeHeatSensorContainer-" + heatSensorDeploymentID)
@@ -84,24 +88,29 @@ public class Partials {
    *  HEAT SENSOR CONTAINERS
    *****************************************************************************************/
 
-  public static DomContent heatSensorsContainerTemplate(String nodeDeploymentID, String heatSensorDeploymentID) {
+  public static DomContent heatSensorsContainerTemplate(String nodeDeploymentID) {
     logger.debug("Creating Heat Sensors Container for node: {}", nodeDeploymentID);
     return div(
-      div().withText("Heat Sensors"),
-      heatSensorTemplate(heatSensorDeploymentID)
+      div()
+        .withText("Heat Sensors:"),
+      button()
+        .withText("Deploy Verticle Selection")
+        .withData("on-click", "$$get('/heatSensor/" + nodeDeploymentID + "/deploy')")
+        .withStyle("margin: 0px 5px;")
     )
-      .withId("heatSensorsContainer-" + nodeDeploymentID)
-      .withStyle("border: 3px solid black; margin: 5px 0px; padding: 5px;");
+      .withText(nodeDeploymentID)
+      .withStyle("border: 3px solid black; margin: 5px 0px; padding: 5px;")
+      .withId("heatSensorsContainer-" + nodeDeploymentID);
   }
 
   public static DomContent heatSensorTemplate(String heatSensorDeploymentID) {
     logger.debug("Creating Sensor for: {}", heatSensorDeploymentID);
     return div(
-//      undeployHeatSensor(heatSensorDeploymentID),
       div()
         .withText("Heat Sensor-" + heatSensorDeploymentID)
         .withId("heatSensor-" + heatSensorDeploymentID),
-      subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID)
+      subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID),
+      undeployHeatSensorTemplate(heatSensorDeploymentID)
     )
       .withId("heatSensorContainer-" + heatSensorDeploymentID)
       .withStyle("border: 3px dotted black; margin: 5px 5px; padding: 5px; font-size: small; display: flex;");
@@ -123,6 +132,15 @@ public class Partials {
   public static DomContent averageTemp(String message) {
     return div(
       text(message)).withId("averageTemp");
+  }
+
+  public static DomContent heatSensors() {
+    return div(
+      button()
+        .withText("Heat Sensors")
+        .withData("on-click", "$$post('/heatSensors')")
+    )
+      .withId("heatSensors");
   }
 
 

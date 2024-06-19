@@ -33,10 +33,28 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   @Override
-  public void start(Promise<Void> startPromise) throws Exception {
+  public void start(Promise<Void> startPromise) {
+    String nodeDeploymentID = deploymentID();
     JsonObject config = new JsonObject();
-    config.put("nodeDeploymentID", deploymentID());
+    config.put("nodeDeploymentID", nodeDeploymentID);
 
+    vertx.sharedData().<String, Long>getClusterWideMap("activeNodes", res -> {
+      if (res.succeeded()) {
+        res.result().put(nodeDeploymentID, System.currentTimeMillis(), ar -> {
+          if (ar.succeeded()) {
+            logger.info("Node {} registered in cluster.", nodeDeploymentID);
+            this.deployVerticles(startPromise, config);
+          } else {
+            logger.error("Failed to register node {} in cluster.", nodeDeploymentID, ar.cause());
+          }
+        });
+      } else {
+        logger.error("Failed to get cluster-wide map.", res.cause());
+      }
+    });
+  }
+
+  private void deployVerticles(Promise<Void> startPromise, JsonObject config) {
     deployHTTPServerVerticle(config).onComplete(res -> {
       if (res.succeeded()) {
         startPromise.complete();
