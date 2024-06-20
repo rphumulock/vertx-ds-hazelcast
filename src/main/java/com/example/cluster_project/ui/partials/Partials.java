@@ -30,55 +30,112 @@ public class Partials {
    *  SUBSCRIBE / UNSUBSCRIBE
    *****************************************************************************************/
 
-  public static DomContent undeployHeatSensorTemplate(String heatSensorDeploymentID) {
-    return
-      button()
-        .withText("x")
-        .withData(
-          "on-click",
-          "$post('/heatSensor/" + heatSensorDeploymentID + "/undeploy')"
-        )
-        .withId("undeployHeatSensorButton-" + heatSensorDeploymentID);
+  public static DomContent heatSensorTemplate(String nodeDeploymentID, String heatSensorDeploymentID) {
+    logger.debug("heatSensorTemplate - Sensor  {}.", heatSensorDeploymentID);
+    return div(
+      div(
+        div()
+          .withText("Heat Sensor: " + heatSensorDeploymentID)
+          .withId("heatSensor-" + heatSensorDeploymentID),
+        heatSensorActions(nodeDeploymentID, heatSensorDeploymentID)
+      )
+        .withStyle("border: 3px dotted black; margin: 5px 5px; padding: 5px; font-size: small; display: flex; justify-content: space-between;")
+        .withId("heatSensorControlsContainer-" + heatSensorDeploymentID),
+      div()
+        .withId("heatSensorDataContainer-" + heatSensorDeploymentID)
+    )
+      .withId("heatSensorContainer-" + heatSensorDeploymentID);
   }
 
-  public static DomContent subscribeHeatSensorUpdatesTemplate(String heatSensorDeploymentID) {
+  public static DomContent heatSensorActions(String nodeDeploymentID, String heatSensorDeploymentID) {
     return div(
-      button()
-        .withData(
-          "on-click",
-          "$$get('/heatSensor/" + heatSensorDeploymentID + "/subscribe')"
-        )
-        .withId("subscribeHeatSensorUpdatesButton-" + heatSensorDeploymentID)
-        .withStyle("height: 100%; border-radius: 50%; margin: auto 5px; background-color: red;")
+      heatSensorStartUpdates(heatSensorDeploymentID),
+      heatSensorUndeployButton(nodeDeploymentID, heatSensorDeploymentID)
     )
-      .withId("subscribeHeatSensorContainer-" + heatSensorDeploymentID)
+      .withId("heatSensorActionsContainer-" + heatSensorDeploymentID)
       .withStyle("display: flex; align-items: center;");
   }
 
-  public static DomContent onSubscribeHeatSensorTemplate(String heatSensorDeploymentID) {
-    logger.debug("onSubscribeHeatSensorTemplate - Sensor {}.", heatSensorDeploymentID);
-    return div(
+
+  public static DomContent heatSensorDeployButton(String nodeDeploymentID) {
+    return button()
+      .withText("Deploy")
+      .withData("on-click", "$$get('/heatSensor/" + nodeDeploymentID + "/deploy')");
+  }
+
+
+  public static DomContent heatSensorUndeployButton(String nodeDeploymentID, String heatSensorDeploymentID) {
+    return button()
+      .withText("Undeploy")
+      .withData(
+        "on-click",
+        "$post('/heatSensor/" + nodeDeploymentID + "/" + heatSensorDeploymentID + "/undeploy')"
+      );
+  }
+
+  public static DomContent heatSensorStartUpdates(String heatSensorDeploymentID) {
+    return button()
+      .withText("Start Updates")
+      .withData(
+        "on-click",
+        "$$get('/heatSensor/" + heatSensorDeploymentID + "/startUpdates')"
+      )
+      .withId("heatSensorStartUpdatesButton-" + heatSensorDeploymentID);
+  }
+
+  public static DomContent heatSensorStopUpdates(String heatSensorDeploymentID) {
+    return button()
+      .withText("Stop Updates")
+      .withData(
+        "on-click",
+        "$$get('/heatSensor/" + heatSensorDeploymentID + "/stopUpdates')"
+      )
+      .withId("heatSensorStopUpdatesButton-" + heatSensorDeploymentID);
+  }
+
+  public static DomContent heatSensorSubscribeButton(String heatSensorDeploymentID) {
+    return button()
+      .withText("Subscribe")
+      .withData(
+        "on-click",
+        "$$get('/heatSensor/" + heatSensorDeploymentID + "/subscribe')"
+      )
+      .withId("heatSensorSubscribeButton-" + heatSensorDeploymentID);
+
+  }
+
+  public static DomContent heatSensorUnsubscribeButton(String heatSensorDeploymentID) {
+    return
       button()
+        .withText("Unsubscribe")
         .withData(
           "on-click",
           "$$get('/heatSensor/" + heatSensorDeploymentID + "/unsubscribe')"
         )
-        .withId("unsubscribeHeatSensorUpdatesButton-" + heatSensorDeploymentID)
-        .withStyle("height: 100%; border-radius: 50%; margin: auto 5px; background-color: green;"),
-      div(
-        text("Temperature: "),
-        div()
-          .withId("heatSensorUpdates-" + heatSensorDeploymentID)
-      )
-        .withStyle("display: flex")
-        .withId("heatSensorUpdatesContainer-" + heatSensorDeploymentID)
-    )
-      .withId("unsubscribeHeatSensorContainer-" + heatSensorDeploymentID)
-      .withStyle("display: flex; align-items: center;");
+        .withId("heatSensorUnsubscribeButton-" + heatSensorDeploymentID);
   }
 
 
-  public static DomContent heatSensorUpdateTemplate(String heatSensorDeploymentID, String temp) {
+  public static DomContent heatSensorUpdatesTemplate(String heatSensorDeploymentID) {
+    return div(
+      text("Temperature:"),
+      div()
+        .withId("heatSensorUpdates-" + heatSensorDeploymentID)
+    )
+      .withStyle("display: flex; gap: 5px; margin: 0px 5px;")
+      .withId("heatSensorUpdatesContainer-" + heatSensorDeploymentID);
+  }
+
+  public static DomContent subscribeHeatSensorTemplate(String heatSensorDeploymentID) {
+    return div(
+      heatSensorUnsubscribeButton(heatSensorDeploymentID)
+    )
+      .withId("unsubscribeHeatSensorContainer-" + heatSensorDeploymentID)
+      .withStyle("display: flex; justify-content: space-between;");
+  }
+
+
+  public static DomContent heatSensorUpdatesTemplate(String heatSensorDeploymentID, String temp) {
     logger.debug("SensorData from: heatSensorDeploymentID: {} temp: {}", heatSensorDeploymentID, temp);
     return div()
       .withText(temp)
@@ -94,27 +151,11 @@ public class Partials {
     return div(
       div()
         .withText("Heat Sensors:"),
-      button()
-        .withText("Deploy Verticle Selection")
-        .withData("on-click", "$$get('/heatSensor/" + nodeDeploymentID + "/deploy')")
-        .withStyle("margin: 0px 5px;")
+      heatSensorDeployButton(nodeDeploymentID)
     )
       .withText(nodeDeploymentID)
       .withStyle("border: 3px solid black; margin: 5px 0px; padding: 5px;")
       .withId("heatSensorsContainer-" + nodeDeploymentID);
-  }
-
-  public static DomContent heatSensorTemplate(String heatSensorDeploymentID) {
-    logger.debug("heatSensorTemplate - Sensor  {}.", heatSensorDeploymentID);
-    return div(
-      div()
-        .withText("Heat Sensor-" + heatSensorDeploymentID)
-        .withId("heatSensor-" + heatSensorDeploymentID),
-      subscribeHeatSensorUpdatesTemplate(heatSensorDeploymentID),
-      undeployHeatSensorTemplate(heatSensorDeploymentID)
-    )
-      .withId("heatSensorContainer-" + heatSensorDeploymentID)
-      .withStyle("border: 3px dotted black; margin: 5px 5px; padding: 5px; font-size: small; display: flex;");
   }
 
 
@@ -138,10 +179,10 @@ public class Partials {
   public static DomContent heatSensors() {
     return div(
       button()
-        .withText("Heat Sensors")
+        .withText("Manage Heat Sensors")
         .withData("on-click", "$$post('/heatSensors')")
     )
-      .withId("heatSensors");
+      .withId("manageHeatSensorsButton");
   }
 
 

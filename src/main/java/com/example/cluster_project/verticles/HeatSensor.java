@@ -2,13 +2,20 @@ package com.example.cluster_project.verticles;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.CompositeFuture;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.shareddata.SharedData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
+
+import static com.example.cluster_project.utils.DatastarUtils.addHeatSensor;
+import static com.example.cluster_project.utils.DatastarUtils.consumeSensorData;
 
 public class HeatSensor extends AbstractVerticle {
 
@@ -21,36 +28,29 @@ public class HeatSensor extends AbstractVerticle {
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    JsonObject config = config();
-    String nodeDeploymentID = config.getString("nodeDeploymentID");
-    String heatSensorDeploymentID = deploymentID();
-    registerVerticle(nodeDeploymentID, heatSensorDeploymentID).onComplete(ar -> {
-
-      this.startUpdates();
-    });
+    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("heatSensors", this::consumeMessage);
   }
-
-  private Future<Long> registerVerticle(String nodeDeploymentID, String heatSensorDeploymentID) {
-    SharedData sharedData = vertx.sharedData();
-
-    Future<Long> incrementFuture = sharedData.getCounter("heatSensorVerticleCount").compose(counter ->
-      counter.incrementAndGet()
-    );
-
-    Future<Void> mapUpdateFuture = sharedData.<String, String>getAsyncMap("verticleRegistry").compose(map ->
-      map.put(nodeDeploymentID, heatSensorDeploymentID).mapEmpty()
-    );
-
-    return CompositeFuture.all(incrementFuture, mapUpdateFuture).compose(result -> {
-      Long incrementedCount = result.resultAt(0);
-      return Future.succeededFuture(incrementedCount);
-    });
-  }
-
 
   @Override
   public void stop() {
     stopUpdates();
+  }
+
+  private void consumeMessage(Message<JsonObject> msg) {
+    String nodeDeploymentID = config().getString("nodeDeploymentID");
+
+    JsonObject payload = msg.body();
+    String eventType = payload.getString("eventType");
+    String sensorNodeDeploymentID = payload.getString("sensorNodeDeploymentID");
+    String heatSensorDeploymentID = payload.getString("heatSensorDeploymentID");
+
+    if (nodeDeploymentID.equals(sensorNodeDeploymentID) && heatSensorDeploymentID.equals(deploymentID())) {
+      if (eventType.equals("startUpdates")) {
+        this.startUpdates();
+      } else if (eventType.equals("stopUpdates")) {
+        this.stopUpdates();
+      }
+    }
   }
 
   private void startUpdates() {
@@ -71,11 +71,12 @@ public class HeatSensor extends AbstractVerticle {
     String heatSensorDeploymentID = deploymentID();
 
     JsonObject payload = new JsonObject()
-      .put("nodeDeploymentID", nodeDeploymentID)
+      .put("sensorNodeDeploymentID", nodeDeploymentID)
       .put("heatSensorDeploymentID", heatSensorDeploymentID)
+      .put("eventType", "sensorUpdate")
       .put("temp", temperature);
 
-    vertx.eventBus().publish("sensor.updates." + heatSensorDeploymentID, payload);
+    vertx.eventBus().publish("heatSensors", payload);
     startUpdates();
   }
 

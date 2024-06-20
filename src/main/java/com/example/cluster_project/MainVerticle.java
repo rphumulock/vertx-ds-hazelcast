@@ -1,5 +1,7 @@
 package com.example.cluster_project;
 
+import com.example.cluster_project.services.ClusterRegistrationService;
+import com.example.cluster_project.services.ClusterRegistrationServiceImpl;
 import com.example.cluster_project.verticles.HTTPServer;
 
 import io.vertx.core.*;
@@ -11,6 +13,8 @@ import org.slf4j.LoggerFactory;
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
+  private ClusterRegistrationServiceImpl registrationService;
+
 
   public static void main(String[] args) {
     HazelcastClusterManager mgr = new HazelcastClusterManager();
@@ -34,24 +38,36 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
-    String nodeDeploymentID = deploymentID();
+    String clusterNodeID = deploymentID();
     JsonObject config = new JsonObject();
-    config.put("nodeDeploymentID", nodeDeploymentID);
+    config.put("clusterNodeID", clusterNodeID);
 
-    vertx.sharedData().<String, Long>getClusterWideMap("activeNodes", res -> {
-      if (res.succeeded()) {
-        res.result().put(nodeDeploymentID, System.currentTimeMillis(), ar -> {
-          if (ar.succeeded()) {
-            logger.info("Node {} registered in cluster.", nodeDeploymentID);
-            this.deployVerticles(startPromise, config);
-          } else {
-            logger.error("Failed to register node {} in cluster.", nodeDeploymentID, ar.cause());
-          }
-        });
+    registrationService = new ClusterRegistrationServiceImpl(vertx);
+
+    registrationService.registerVerticle(clusterNodeID, clusterNodeID, ar -> {
+      if (ar.succeeded()) {
+        logger.info("Node {} registered in cluster {}.", clusterNodeID, clusterNodeID);
+        this.deployVerticles(startPromise, config);
       } else {
-        logger.error("Failed to get cluster-wide map.", res.cause());
+        logger.error("Failed to register node {} in cluster {}.", clusterNodeID, clusterNodeID, ar.cause());
+        startPromise.fail(ar.cause());
       }
     });
+
+//    vertx.sharedData().<String, Long>getClusterWideMap("activeNodes", res -> {
+//      if (res.succeeded()) {
+//        res.result().put(nodeDeploymentID, System.currentTimeMillis(), ar -> {
+//          if (ar.succeeded()) {
+//            logger.info("Node {} registered in cluster.", nodeDeploymentID);
+//            this.deployVerticles(startPromise, config);
+//          } else {
+//            logger.error("Failed to register node {} in cluster.", nodeDeploymentID, ar.cause());
+//          }
+//        });
+//      } else {
+//        logger.error("Failed to get cluster-wide map.", res.cause());
+//      }
+//    });
   }
 
   private void deployVerticles(Promise<Void> startPromise, JsonObject config) {
