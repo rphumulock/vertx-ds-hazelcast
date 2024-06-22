@@ -28,7 +28,11 @@ public class HeatSensor extends AbstractVerticle {
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("heatSensors", this::consumeMessage);
+    String clusterNodeID = config().getString("clusterNodeID");
+    String heatSensorID = deploymentID();
+
+    MessageConsumer<JsonObject> consumer = vertx.eventBus()
+      .consumer("heatSensor." + clusterNodeID + "." + heatSensorID, this::consumeMessage);
   }
 
   @Override
@@ -37,19 +41,12 @@ public class HeatSensor extends AbstractVerticle {
   }
 
   private void consumeMessage(Message<JsonObject> msg) {
-    String nodeDeploymentID = config().getString("nodeDeploymentID");
-
     JsonObject payload = msg.body();
     String eventType = payload.getString("eventType");
-    String sensorNodeDeploymentID = payload.getString("sensorNodeDeploymentID");
-    String heatSensorDeploymentID = payload.getString("heatSensorDeploymentID");
-
-    if (nodeDeploymentID.equals(sensorNodeDeploymentID) && heatSensorDeploymentID.equals(deploymentID())) {
-      if (eventType.equals("startUpdates")) {
-        this.startUpdates();
-      } else if (eventType.equals("stopUpdates")) {
-        this.stopUpdates();
-      }
+    if (eventType.equals("startUpdates")) {
+      this.startUpdates();
+    } else if (eventType.equals("stopUpdates")) {
+      this.stopUpdates();
     }
   }
 
@@ -67,14 +64,16 @@ public class HeatSensor extends AbstractVerticle {
 
   private void update(long timerId) {
     temperature = temperature + (delta() / 10);
-    String nodeDeploymentID = config().getString("nodeDeploymentID");
-    String heatSensorDeploymentID = deploymentID();
+    String clusterNodeID = config().getString("clusterNodeID");
+    String heatSensorID = deploymentID();
 
     JsonObject payload = new JsonObject()
-      .put("sensorNodeDeploymentID", nodeDeploymentID)
-      .put("heatSensorDeploymentID", heatSensorDeploymentID)
+      .put("clusterNodeID", clusterNodeID)
+      .put("heatSensorID", heatSensorID)
       .put("eventType", "sensorUpdate")
       .put("temp", temperature);
+
+    logger.debug("Heat Sensor Data from: {}.", payload.toString());
 
     vertx.eventBus().publish("heatSensors", payload);
     startUpdates();

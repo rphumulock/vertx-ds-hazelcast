@@ -124,6 +124,15 @@ public class DatastarUtils {
     ));
   }
 
+  public static void removeHeatSensor(HttpServerResponse response, String clusterNodeID, String heatSensorID) {
+    sendSSE(response, DatastarUtils.buildConfig(
+      UUID.randomUUID().toString(),
+      "#heatSensorContainer-" + heatSensorID,
+      MergeTypes.DELETE_ELEMENT.getType(),
+      0,
+      "<div></div>"
+    ));
+  }
 
   /*****************************************************************************************
    * HEAT SENSOR SUBSCRIBE / UNSUBSCRIBE
@@ -135,18 +144,18 @@ public class DatastarUtils {
       "#heatSensorActionsContainer-" + heatSensorID,
       MergeTypes.PREPEND_ELEMENT.getType(),
       0,
-      Partials.heatSensorSubscribeButton(heatSensorID).render()
+      Partials.heatSensorSubscribeButton(clusterNodeID, heatSensorID).render()
     ));
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorStartUpdatesButton-" + heatSensorID,
       MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.heatSensorStopUpdates(heatSensorID).render()
+      Partials.heatSensorStopUpdates(clusterNodeID, heatSensorID).render()
     ));
   }
 
-  public static void heatSensorStopUpdates(HttpServerResponse response, String heatSensorID) {
+  public static void heatSensorStopUpdates(HttpServerResponse response, String clusterNodeID, String heatSensorID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorSubscribeButton-" + heatSensorID,
@@ -173,28 +182,28 @@ public class DatastarUtils {
       "#heatSensorStopUpdatesButton-" + heatSensorID,
       MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.heatSensorStartUpdates(heatSensorID).render()
+      Partials.heatSensorStartUpdates(clusterNodeID, heatSensorID).render()
     ));
   }
 
-  public static void heatSensorSubscribe(HttpServerResponse response, String heatSensorID) {
+  public static void heatSensorSubscribe(HttpServerResponse response, String clusterNodeID, String heatSensorID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorSubscribeButton-" + heatSensorID,
       MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.heatSensorUnsubscribeButton(heatSensorID).render()
+      Partials.heatSensorUnsubscribeButton(clusterNodeID, heatSensorID).render()
     ));
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorDataContainer-" + heatSensorID,
       MergeTypes.APPEND_ELEMENT.getType(),
       0,
-      Partials.heatSensorUpdatesTemplate(heatSensorID).render()
+      Partials.heatSensorUpdatesTemplate(clusterNodeID, heatSensorID).render()
     ));
   }
 
-  public static void heatSensorUnsubscribe(HttpServerResponse response, String heatSensorID) {
+  public static void heatSensorUnsubscribe(HttpServerResponse response, String clusterNodeID, String heatSensorID) {
     sendSSE(response, buildConfig(
       UUID.randomUUID().toString(),
       "#heatSensorUpdatesContainer-" + heatSensorID,
@@ -207,12 +216,13 @@ public class DatastarUtils {
       "#heatSensorUnsubscribeButton-" + heatSensorID,
       DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.heatSensorSubscribeButton(heatSensorID).render()
+      Partials.heatSensorSubscribeButton(clusterNodeID, heatSensorID).render()
     ));
 
   }
 
   public static void consumeSensorData(HttpServerResponse response, JsonObject payload) {
+    String clusterNodeID = payload.getString("clusterNodeID");
     String heatSensorID = payload.getString("heatSensorID");
     String temp = payload.getString("temp");
     sendSSE(response, buildConfig(
@@ -220,7 +230,7 @@ public class DatastarUtils {
       "#heatSensorUpdates-" + heatSensorID,
       DatastarUtils.MergeTypes.MORPH_ELEMENT.getType(),
       0,
-      Partials.heatSensorUpdatesTemplate(heatSensorID, temp).render()
+      Partials.heatSensorDataTemplate(clusterNodeID, heatSensorID, temp).render()
     ));
   }
 

@@ -102,6 +102,10 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
     return promise.future();
   }
 
+  public void listDeployedVerticles() {
+    logger.debug("Verticles Deployed on this Cluster Node: [{}].", vertx.deploymentIDs().toString());
+  }
+
   private Future<Void> addVerticleID(AsyncMap<String, ArrayList<String>> map, String mapKey, String verticleID) {
     Promise<Void> promise = Promise.promise();
     map.get(mapKey, getRes -> {
@@ -117,7 +121,7 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
         // Put the updated list back into the map
         map.put(mapKey, verticleIDs, putRes -> {
           if (putRes.succeeded()) {
-            logger.debug("Cluster-wide map entry created with key: {}.", mapKey);
+            logger.debug("Cluster-wide map entry created with key: [{}].", mapKey);
             promise.complete();
           } else {
             promise.fail(putRes.cause());
