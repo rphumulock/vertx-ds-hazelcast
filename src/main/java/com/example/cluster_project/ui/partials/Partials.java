@@ -42,10 +42,10 @@ public class Partials {
       .withStyle("display: flex; align-items: center;");
   }
 
-
   public static DomContent heatSensorDeployButton(String clusterNodeID) {
     return button()
       .withText("Deploy")
+      .withStyle("margin: 0px 5px;")
       .withData("on-click", "$$get('/heatSensor/" + clusterNodeID + "/deploy')");
   }
 
@@ -107,10 +107,10 @@ public class Partials {
       .withId("heatSensorUpdatesContainer-" + heatSensorID);
   }
 
-  public static DomContent heatSensorDataTemplate(String cluserNodeID, String heatSensorID, String temp) {
-    logger.debug("SensorData from: heatSensorID: {} temp: {}", heatSensorID, temp);
+  public static DomContent heatSensorDataTemplate(String cluserNodeID, String heatSensorID, String temperature) {
+    logger.debug("SensorData from: heatSensorID: {} temp: {}", heatSensorID, temperature);
     return div()
-      .withText(temp)
+      .withText(temperature)
       .withId("heatSensorUpdates-" + heatSensorID);
   }
 

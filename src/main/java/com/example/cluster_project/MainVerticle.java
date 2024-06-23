@@ -2,12 +2,16 @@ package com.example.cluster_project;
 
 import com.example.cluster_project.services.ClusterRegistrationServiceImpl;
 import com.example.cluster_project.verticles.HTTPServer;
-
 import com.example.cluster_project.verticles.HeatSensor;
-import io.vertx.core.*;
+
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
@@ -15,13 +19,13 @@ import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.example.cluster_project.utils.DatastarUtils.*;
-
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
 
   private ClusterRegistrationServiceImpl registrationService;
+
+  private MessageConsumer<JsonObject> consumer;
 
   public static void main(String[] args) {
     HazelcastClusterManager mgr = new HazelcastClusterManager();
@@ -75,35 +79,56 @@ public class MainVerticle extends AbstractVerticle {
       });
   }
 
+  @Override
+  public void stop(Promise<Void> stopPromise) {
+    String clusterNodeID = deploymentID();
+    if (this.consumer.isRegistered()) {
+      this.consumer.unregister()
+        .onComplete(res -> {
+          if (res.succeeded()) {
+            logger.info("verticle.controller unregistered succeeded. CL-[{}].", clusterNodeID);
+          } else {
+            logger.error("verticle.controller unregistered failed. CL-[{}].", clusterNodeID);
+          }
+        });
+    }
+  }
+
   private void setupVerticleController(String clusterNodeID) {
     MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("verticle.controller." + clusterNodeID);
 
     consumer.handler(message -> {
       JsonObject payload = message.body();
       String eventType = payload.getString("eventType");
-      if (eventType.equals("deploy.HeatSensor")) {
-        deployVerticle(HeatSensor.class.getName(), message);
-      } else if (eventType.equals("undeploy.HeatSensor")) {
-        String heatSensorID = payload.getString("heatSensorID");
-        undeployVerticle(message, heatSensorID);
+
+      switch (eventType) {
+        case "deploy":
+          deployVerticle(HeatSensor.class.getName(), message);
+          break;
+        case "undeploy":
+          String deploymentID = payload.getString("deploymentID");
+          undeployVerticle(message, deploymentID);
+          break;
       }
     });
 
     consumer.completionHandler(res -> {
       if (res.succeeded()) {
-        logger.info("The verticle.controller handler registration for Cluster Node: {} has reached all nodes.", clusterNodeID);
+        logger.info("completionHandler verticle.controller succeeded: C-[{}] has reached all nodes.", clusterNodeID);
       } else {
-        logger.info("The verticle.controller handler registration for Cluster Node: {} has failed.", clusterNodeID);
+        logger.info("completionHandler verticle.controller failed: C-[{}] has failed.", clusterNodeID);
       }
     });
 
-    consumer.endHandler(res -> {
-      logger.info("Unregistering verticle.controller consumer for Cluster Node: {}.", clusterNodeID);
+    consumer.endHandler(unused -> {
+      logger.info("endHandler verticle.controller: C-[{}].", clusterNodeID);
     });
 
     consumer.exceptionHandler(res -> {
-      logger.error("There was an exception in the verticle.controller consumer for Cluster Node: {}.", clusterNodeID);
+      logger.error("exceptionHandler verticle.controller: C-[{}]. Cause: {}.", clusterNodeID, res.getCause());
     });
+
+    this.consumer = consumer;
   }
 
   private void deployVerticle(String verticleName, Message<JsonObject> message) {
@@ -139,18 +164,20 @@ public class MainVerticle extends AbstractVerticle {
       });
   }
 
-  private void undeployVerticle(Message<JsonObject> message, String heatSensorID) {
+  private void undeployVerticle(Message<JsonObject> message, String deploymentID) {
     String clusterNodeID = message.body().getString("clusterNodeID");
 
-    vertx.undeploy(heatSensorID)
+    vertx.undeploy(deploymentID)
       .onSuccess(v -> {
-        registrationService.unregisterVerticle("HeatSensor", clusterNodeID, heatSensorID)
+        registrationService.unregisterVerticle("HeatSensor", clusterNodeID, deploymentID)
           .onSuccess(ar -> {
-            logger.info("Cluster {} undeployed Heat Sensor {}.", clusterNodeID, heatSensorID);
-            JsonObject reply = new JsonObject()
+            logger.info("Cluster {} undeployed Heat Sensor {}.", clusterNodeID, deploymentID);
+            JsonObject payload = new JsonObject()
               .put("status", "success")
-              .put("heatSensorID", heatSensorID);
-            message.reply(reply);
+              .put("eventType", "undeploy.HeatSensor")
+              .put("clusterNodeID", clusterNodeID)
+              .put("deploymentID", deploymentID);
+            message.reply(payload);
           })
           .onFailure(ar -> {
             JsonObject reply = new JsonObject()

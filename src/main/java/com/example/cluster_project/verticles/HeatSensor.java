@@ -1,21 +1,13 @@
 package com.example.cluster_project.verticles;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.shareddata.SharedData;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
-
-import static com.example.cluster_project.utils.DatastarUtils.addHeatSensor;
-import static com.example.cluster_project.utils.DatastarUtils.consumeSensorData;
 
 public class HeatSensor extends AbstractVerticle {
 
@@ -28,11 +20,7 @@ public class HeatSensor extends AbstractVerticle {
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    String clusterNodeID = config().getString("clusterNodeID");
-    String heatSensorID = deploymentID();
-
-    MessageConsumer<JsonObject> consumer = vertx.eventBus()
-      .consumer("heatSensor." + clusterNodeID + "." + heatSensorID, this::consumeMessage);
+    setupConsumer();
   }
 
   @Override
@@ -40,14 +28,52 @@ public class HeatSensor extends AbstractVerticle {
     stopUpdates();
   }
 
-  private void consumeMessage(Message<JsonObject> msg) {
-    JsonObject payload = msg.body();
-    String eventType = payload.getString("eventType");
-    if (eventType.equals("startUpdates")) {
-      this.startUpdates();
-    } else if (eventType.equals("stopUpdates")) {
-      this.stopUpdates();
-    }
+  private void setupConsumer() {
+    String clusterNodeID = config().getString("clusterNodeID");
+    String deploymentID = deploymentID();
+
+    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("HeatSensor." + clusterNodeID + "." + deploymentID);
+
+    consumer.handler(message -> {
+      JsonObject messageBody = message.body();
+      String eventType = messageBody.getString("eventType");
+
+      JsonObject payload = new JsonObject()
+        .put("status", "success")
+        .put("clusterNodeID", clusterNodeID)
+        .put("deploymentID", deploymentID);
+
+      switch (eventType) {
+        case "startUpdates":
+          this.startUpdates();
+          logger.info("Updates started for [{}] deployed on [{}].", deploymentID, clusterNodeID);
+          payload.put("eventType", "start.updates.HeatSensor");
+          message.reply(payload);
+          break;
+        case "stopUpdates":
+          this.stopUpdates();
+          logger.info("Updates stopped for [{}] deployed on [{}].", deploymentID, clusterNodeID);
+          payload.put("eventType", "stop.updates.HeatSensor");
+          message.reply(payload);
+          break;
+      }
+    });
+
+    consumer.completionHandler(res -> {
+      if (res.succeeded()) {
+        logger.info("The verticle.controller handler registration for Cluster Node: {} has reached all nodes.", clusterNodeID);
+      } else {
+        logger.info("The verticle.controller handler registration for Cluster Node: {} has failed.", clusterNodeID);
+      }
+    });
+
+    consumer.endHandler(res -> {
+      logger.info("Unregistering verticle.controller consumer for Cluster Node: {}.", clusterNodeID);
+    });
+
+    consumer.exceptionHandler(res -> {
+      logger.error("There was an exception in the verticle.controller consumer for Cluster Node: {}.", clusterNodeID);
+    });
   }
 
   private void startUpdates() {
@@ -65,17 +91,17 @@ public class HeatSensor extends AbstractVerticle {
   private void update(long timerId) {
     temperature = temperature + (delta() / 10);
     String clusterNodeID = config().getString("clusterNodeID");
-    String heatSensorID = deploymentID();
+    String deploymentID = deploymentID();
 
     JsonObject payload = new JsonObject()
+      .put("eventType", "consume.updates.HeatSensor")
       .put("clusterNodeID", clusterNodeID)
-      .put("heatSensorID", heatSensorID)
-      .put("eventType", "sensorUpdate")
-      .put("temp", temperature);
+      .put("deploymentID", deploymentID)
+      .put("temperature", temperature);
 
     logger.debug("Heat Sensor Data from: {}.", payload.toString());
 
-    vertx.eventBus().publish("heatSensors", payload);
+    vertx.eventBus().publish("cluster.HeatSensors", payload);
     startUpdates();
   }
 
