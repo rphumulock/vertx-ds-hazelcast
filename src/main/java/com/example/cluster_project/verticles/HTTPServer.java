@@ -1,9 +1,7 @@
 package com.example.cluster_project.verticles;
 
-import com.example.cluster_project.services.ClusterRegistrationServiceImpl;
+import com.example.cluster_project.MainVerticle;
 import com.example.cluster_project.ui.partials.Partials;
-import com.example.cluster_project.ui.templates.Index;
-import com.example.cluster_project.utils.ClusterUtils;
 
 import io.vertx.core.*;
 import io.vertx.core.eventbus.MessageConsumer;
@@ -14,7 +12,6 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import io.vertx.ext.web.Session;
 import io.vertx.ext.web.handler.SessionHandler;
@@ -67,7 +64,7 @@ public class HTTPServer extends AbstractVerticle {
       this.consumer.unregister()
         .onComplete(res -> {
           if (res.succeeded()) {
-            logger.info("cluster.HeatSensors unregistered succeeded. CL-[{}].", clusterNodeID);
+            logger.info("cluster.HeatSensors unregistered succeeded. CL-[ {} ].", clusterNodeID);
           } else {
             logger.error("cluster.HeatSensors unregistered failed. CL-[{}].", clusterNodeID);
           }
@@ -75,19 +72,54 @@ public class HTTPServer extends AbstractVerticle {
     }
   }
 
+  /*****************************************************************************************
+   *  SETUP
+   *****************************************************************************************/
+
   private void setupRoutes(Router router) {
     router.get("/").handler(this::rootHandler);
     router.post("/heatSensors").handler(this::heatSensorsHandler);
     router.get("/heatSensor/:clusterNodeID/deploy").handler(this::heatSensorDeployHandler);
-    router.get("/heatSensor/:clusterNodeID/:deploymentID/undeploy").handler(this::heatSensorUndeployHandler);
-    router.get("/heatSensor/:clusterNodeID/:deploymentID/startUpdates").handler(this::heatSensorStartUpdatesHandler);
-    router.get("/heatSensor/:clusterNodeID/:deploymentID/stopUpdates").handler(this::heatSensorStopUpdatesHandler);
-    router.get("/heatSensor/:clusterNodeID/:deploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
-    router.get("/heatSensor/:clusterNodeID/:deploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
+//    router.get("/heatSensor/:clusterNodeID/:deploymentID/undeploy").handler(this::heatSensorUndeployHandler);
+//    router.get("/heatSensor/:clusterNodeID/:deploymentID/startUpdates").handler(this::heatSensorStartUpdatesHandler);
+//    router.get("/heatSensor/:clusterNodeID/:deploymentID/stopUpdates").handler(this::heatSensorStopUpdatesHandler);
+//    router.get("/heatSensor/:clusterNodeID/:deploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
+//    router.get("/heatSensor/:clusterNodeID/:deploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
+  }
+
+  private void setupHeatSensorDashboard(HttpServerResponse response) {
+    getRegisteredVerticles(MainVerticle.class.getName())
+      .onSuccess(clusterNodes -> {
+        logger.info("Active nodes in the cluster: {}", clusterNodes);
+        clusterNodes.forEach(clusterNodeID -> {
+          heatSensorsContainer(response, clusterNodeID);
+        });
+        manageHeatSensors(response);
+        heatSensorConsumer(response);
+      })
+      .onFailure(cause -> {
+        logger.error("Failed to retrieve active nodes from cluster.", cause);
+      });
+  }
+
+  private Future<List<String>> getRegisteredVerticles(String verticleName) {
+    Promise<List<String>> promise = Promise.promise();
+    vertx.eventBus().request("cluster.registration", new JsonObject()
+      .put("action", "getRegisteredVerticles")
+      .put("deploymentName", verticleName), ar -> {
+      if (ar.succeeded()) {
+        JsonObject result = (JsonObject) ar.result().body();
+        List<String> deploymentIDs = result.getJsonArray("deploymentIDs").getList();
+        promise.complete(deploymentIDs);
+      } else {
+        promise.fail(ar.cause());
+      }
+    });
+    return promise.future();
   }
 
   /*****************************************************************************************
-   *  HANDLERS
+   *  ROOT
    *****************************************************************************************/
 
   private void rootHandler(RoutingContext routingContext) {
@@ -98,52 +130,26 @@ public class HTTPServer extends AbstractVerticle {
     HttpServerResponse response = routingContext.response();
     String clusterNodeID = config().getString("clusterNodeID");
 
-    sendHtmlResponse(response, Index.getIndex(clusterNodeID));
+    sendHtmlResponse(response, Partials.indexTemplate(clusterNodeID));
   }
 
   private void heatSensorsHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
     setHeaders(response);
-    String clusterNodeID = config().getString("clusterNodeID");
-
     routingContext.request().bodyHandler(body -> {
-
-      ClusterUtils.getClusterNodes(vertx, res -> {
-        if (res.succeeded()) {
-          List<String> nodes = res.result();
-          logger.info("Active nodes in the cluster: {}", nodes);
-
-          nodes.forEach(node -> {
-            sendSSE(response, buildConfig(
-              UUID.randomUUID().toString(),
-              "#main",
-              MergeTypes.APPEND_ELEMENT.getType(),
-              0,
-              Partials.heatSensorsContainerTemplate(node).render()
-            ));
-          });
-
-          sendSSE(response, buildConfig(
-            UUID.randomUUID().toString(),
-            "#manageHeatSensorsButton",
-            MergeTypes.DELETE_ELEMENT.getType(),
-            0,
-            "<div></div>"
-          ));
-
-          heatSensorConsumer(response);
-
-        } else {
-          logger.error("Failed to retrieve active nodes from cluster.", res.cause());
-        }
-      });
+      setupHeatSensorDashboard(response);
     });
   }
 
   private void heatSensorConsumer(HttpServerResponse response) {
-    String thisClusterNodeID = config().getString("clusterNodeID");
+    String clusterNodeID = config().getString("clusterNodeID");
     MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("cluster.HeatSensors");
+    heatSensorConsumerHandlers(response, consumer, clusterNodeID);
+    heatSensorResponseHandlers(response, clusterNodeID);
+    this.consumer = consumer;
+  }
 
+  private void heatSensorConsumerHandlers(HttpServerResponse response, MessageConsumer<JsonObject> consumer, String clusterNodeID) {
     consumer.handler(msg -> {
       JsonObject payload = msg.body();
       String eventType = payload.getString("eventType");
@@ -168,37 +174,42 @@ public class HTTPServer extends AbstractVerticle {
 
     consumer.completionHandler(res -> {
       if (res.succeeded()) {
-        logger.info("The HeatSensors handler registration for {} has reached all nodes.", thisClusterNodeID);
+        logger.info("cluster.HeatSensors completionHandler [{}] succeeded.", clusterNodeID);
       } else {
-        logger.info("The HeatSensors handler registration has failed.");
+        logger.info("cluster.HeatSensors completionHandler [{}] failed.", clusterNodeID);
       }
     });
 
     consumer.exceptionHandler(res -> {
-      logger.debug("Consumer exception for ");
+      logger.info("cluster.HeatSensors exceptionHandler [{}].", clusterNodeID);
     });
 
     consumer.endHandler(res -> {
-      logger.debug("Unregistering consumer for session: {} - created on: {}.");
+      logger.info("cluster.HeatSensors endHandler [{}].", clusterNodeID);
+    });
+  }
+
+  private void heatSensorResponseHandlers(HttpServerResponse response, String clusterNodeID) {
+    response.closeHandler(v -> {
+      logger.info("heatSensorsHandler closeHandler [{}].", clusterNodeID);
     });
 
     response.endHandler(unused -> {
+      logger.info("heatSensorsHandler endHandler [{}].", clusterNodeID);
       if (consumer.isRegistered()) {
         consumer.unregister().onComplete(res -> {
           if (res.succeeded()) {
-            logger.debug("Consumer unregistered successfully for session: {} - created on: {}.");
+            logger.info("cluster.HeatSensors unregister [{}] succeeded.", clusterNodeID);
           } else {
-            logger.error("Failed to unregister consumer for session: {} - created on: {}.");
+            logger.info("cluster.HeatSensors unregister [{}] failed.", clusterNodeID);
           }
         });
       }
     });
-
-    this.consumer = consumer;
   }
 
   /*****************************************************************************************
-   *  HANDLERS
+   *  SUBSCRIBE
    *****************************************************************************************/
 
   private void heatSensorSubscribeHandler(RoutingContext routingContext) {
@@ -224,6 +235,10 @@ public class HTTPServer extends AbstractVerticle {
       response.end();
     });
   }
+
+  /*****************************************************************************************
+   *  UPDATES
+   *****************************************************************************************/
 
   private void heatSensorStartUpdatesHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
@@ -301,6 +316,10 @@ public class HTTPServer extends AbstractVerticle {
     });
   }
 
+  /*****************************************************************************************
+   *  DEPLOY
+   *****************************************************************************************/
+
   private void heatSensorDeployHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
     setHeaders(response);
@@ -354,5 +373,6 @@ public class HTTPServer extends AbstractVerticle {
         });
     });
   }
+
 
 }

@@ -1,5 +1,6 @@
 package com.example.cluster_project.ui.partials;
 
+import io.vertx.core.json.JsonObject;
 import j2html.tags.DomContent;
 
 import static j2html.TagCreator.*;
@@ -11,12 +12,37 @@ public class Partials {
 
   private static final Logger logger = LoggerFactory.getLogger(Partials.class);
 
+  public static String indexTemplate(String clusterNodeID) {
+    var title = "Cluster: " + clusterNodeID;
+    var store = new JsonObject();
+    return document(html(
+        sharedHead(title),
+        body(
+          h4("Current Node: " + clusterNodeID),
+          main(
+            Partials.heatSensors()
+          ).
+            withClass("container").
+            withId("main").
+            withData("store", store.encode())
+        )
+      )
+    );
+  }
+
+  public static DomContent sharedHead(String title) {
+    return head(
+      title(title),
+      script().withSrc("https://cdn.jsdelivr.net/npm/@sudodevnull/datastar").isDefer().withType("module"),
+      link().withRel("icon").withType("image/x-icon").withHref("favicon.ico")
+    );
+  }
+
   /*****************************************************************************************
    *  SUBSCRIBE / UNSUBSCRIBE
    *****************************************************************************************/
 
   public static DomContent heatSensorTemplate(String clusterNodeID, String heatSensorID) {
-    logger.debug("heatSensorTemplate - Sensor  {}.", heatSensorID);
     return div(
       div(
         div()
@@ -52,14 +78,14 @@ public class Partials {
   public static DomContent heatSensorUndeployButton(String clusterNodeID, String heatSensorID) {
     return button()
       .withText("Undeploy")
-      .withData("on-click", "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/undeploy')");
+      .withData("on-click.debounce_1000ms.debounce_1000ms", "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/undeploy')");
   }
 
   public static DomContent heatSensorStartUpdates(String clusterNodeID, String heatSensorID) {
     return button()
       .withText("Start Updates")
       .withData(
-        "on-click",
+        "on-click.debounce_1000ms",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/startUpdates')"
       )
       .withId("heatSensorStartUpdatesButton-" + heatSensorID);
@@ -69,7 +95,7 @@ public class Partials {
     return button()
       .withText("Stop Updates")
       .withData(
-        "on-click",
+        "on-click.debounce_1000ms",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/stopUpdates')"
       )
       .withId("heatSensorStopUpdatesButton-" + heatSensorID);
@@ -79,7 +105,7 @@ public class Partials {
     return button()
       .withText("Subscribe")
       .withData(
-        "on-click",
+        "on-click.debounce_1000ms",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/subscribe')"
       )
       .withId("heatSensorSubscribeButton-" + heatSensorID);
@@ -91,7 +117,7 @@ public class Partials {
       button()
         .withText("Unsubscribe")
         .withData(
-          "on-click",
+          "on-click.debounce_1000ms",
           "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/unsubscribe')"
         )
         .withId("heatSensorUnsubscribeButton-" + heatSensorID);
@@ -119,7 +145,6 @@ public class Partials {
    *****************************************************************************************/
 
   public static DomContent heatSensorsContainerTemplate(String clusterNodeID) {
-    logger.debug("heatSensorsContainerTemplate - Node {}.", clusterNodeID);
     return div(
       div()
         .withText("Heat Sensors:"),
@@ -139,7 +164,7 @@ public class Partials {
     return div(
       button()
         .withText("Manage Heat Sensors")
-        .withData("on-click", "$$post('/heatSensors')")
+        .withData("on-click.debounce", "$$post('/heatSensors')")
     )
       .withId("manageHeatSensorsButton");
   }

@@ -7,7 +7,7 @@ public final class SSEConfig {  // Class declared final
   private final String mergeType;
   private final Number settle;  // Consider changing Number to a specific type like Double if mutability is a concern
   private final String fragment;
-  private final boolean end;
+  private final boolean vt;
 
   private SSEConfig(Builder builder) {
     this.selector = builder.selector;
@@ -15,7 +15,7 @@ public final class SSEConfig {  // Class declared final
     this.mergeType = builder.mergeType;
     this.settle = builder.settle;
     this.fragment = builder.fragment;
-    this.end = builder.end;
+    this.vt = builder.vt;
   }
 
   public String getEvent() {
@@ -42,8 +42,8 @@ public final class SSEConfig {  // Class declared final
     return fragment;
   }
 
-  public boolean isEnd() {
-    return end;
+  public boolean isVT() {
+    return vt;
   }
 
   // Builder static inner class
@@ -53,7 +53,7 @@ public final class SSEConfig {  // Class declared final
     private String mergeType;
     private Number settle;
     private String fragment;
-    private boolean end;
+    private boolean vt;
 
     public Builder withSelector(String selector) {
       this.selector = selector;
@@ -80,8 +80,8 @@ public final class SSEConfig {  // Class declared final
       return this;
     }
 
-    public Builder withEnd(boolean end) {
-      this.end = end;
+    public Builder withVT(boolean vt) {
+      this.vt = vt;
       return this;
     }
 
