@@ -22,25 +22,41 @@ public class ClusterRegistration extends AbstractVerticle {
   }
 
   private void setupConsumer() {
+    String thisClusterNodeID = config().getString("clusterNodeID");
     vertx.eventBus().consumer("cluster.registration", message -> {
       JsonObject body = (JsonObject) message.body();
       String action = body.getString("action");
+      String clusterNodeID = body.getString("clusterNodeID");
       String deploymentName = body.getString("deploymentName");
       String deploymentID = body.getString("deploymentID");
+
+
       DeploymentOptions options = new DeploymentOptions(body.getJsonObject("options", new JsonObject()));
 
       switch (action) {
         case "deploy":
-          handleDeploy(message, deploymentName, options);
+          if (clusterNodeID.equals(thisClusterNodeID)) {
+            handleDeploy(message, deploymentName, options)
+              .onSuccess(v -> logClusterVerticleRegistry())
+              .onFailure(cause -> logger.error("Failed to deploy verticle: {}", deploymentName, cause));
+          }
           break;
         case "undeploy":
-          handleUndeploy(message, deploymentID, deploymentName);
+          if (clusterNodeID.equals(thisClusterNodeID)) {
+            handleUndeploy(message, deploymentID, deploymentName)
+              .onSuccess(v -> logClusterVerticleRegistry())
+              .onFailure(cause -> logger.error("Failed to undeploy verticle: {}", deploymentName, cause));
+          }
           break;
         case "register":
-          handleRegister(message, deploymentName, deploymentID);
+          handleRegister(message, deploymentName, deploymentID)
+            .onSuccess(v -> logClusterVerticleRegistry())
+            .onFailure(cause -> logger.error("Failed to register verticle: {}", deploymentName, cause));
           break;
         case "unregister":
-          handleUnregister(message, deploymentName, deploymentID);
+          handleUnregister(message, deploymentName, deploymentID)
+            .onSuccess(v -> logClusterVerticleRegistry())
+            .onFailure(cause -> logger.error("Failed to unregister verticle: {}", deploymentName, cause));
           break;
         case "getRegisteredVerticles":
           handleGetRegisteredVerticles(message, deploymentName);
@@ -56,47 +72,65 @@ public class ClusterRegistration extends AbstractVerticle {
     });
   }
 
-  private void handleDeploy(Message<Object> message, String deploymentName, DeploymentOptions options) {
+  private Future<Void> handleDeploy(Message<Object> message, String deploymentName, DeploymentOptions options) {
+    Promise<Void> promise = Promise.promise();
     deployAndRegisterVerticle(deploymentName, options).onComplete(ar -> {
       if (ar.succeeded()) {
-        logger.info("deployAndRegisterVerticle {}.", ar.result());
+        logger.info("Successfully deployed and registered verticle: {}", deploymentName);
         message.reply(ar.result());
+        promise.complete();
       } else {
+        logger.error("Failed to deploy and register verticle: {}", deploymentName, ar.cause());
         message.fail(500, ar.cause().getMessage());
+        promise.fail(ar.cause());
       }
     });
+    return promise.future();
   }
 
-  private void handleUndeploy(Message<Object> message, String deploymentID, String deploymentName) {
+  private Future<Void> handleUndeploy(Message<Object> message, String deploymentID, String deploymentName) {
+    Promise<Void> promise = Promise.promise();
     undeployAndUnregisterVerticle(deploymentID, deploymentName).onComplete(ar -> {
       if (ar.succeeded()) {
+        logger.info("Successfully undeployed and unregistered verticle: {}", deploymentName);
         message.reply(ar.result());
+        promise.complete();
       } else {
+        logger.error("Failed to undeploy and unregister verticle: {}", deploymentName, ar.cause());
         message.fail(500, ar.cause().getMessage());
+        promise.fail(ar.cause());
       }
     });
+    return promise.future();
   }
 
-  private void handleRegister(Message<Object> message, String deploymentName, String deploymentID) {
-    registerVerticle(deploymentName, deploymentID).onComplete(ar -> {
-      if (ar.succeeded()) {
-        logger.info("register {}.", ar.result());
-        message.reply(new JsonObject().put("deploymentID", ar.result()));
+  private Future<Void> handleRegister(Message<Object> message, String deploymentName, String deploymentID) {
+    Promise<Void> promise = Promise.promise();
+    registerVerticle(deploymentName, deploymentID)
+      .onSuccess(result -> {
+        logger.info("Successfully registered verticle: {}", deploymentName);
+        message.reply(new JsonObject().put("deploymentID", result));
         message.reply("Registered successfully.");
-      } else {
-        message.fail(500, ar.cause().getMessage());
-      }
-    });
+      })
+      .onFailure(cause -> {
+        logger.error("Failed to register verticle: {}", deploymentName, cause);
+        message.fail(500, cause.getMessage());
+      });
+    return promise.future();
   }
 
-  private void handleUnregister(Message<Object> message, String deploymentName, String deploymentID) {
-    unregisterVerticle(deploymentName, deploymentID).onComplete(ar -> {
-      if (ar.succeeded()) {
+  private Future<Void> handleUnregister(Message<Object> message, String deploymentName, String deploymentID) {
+    Promise<Void> promise = Promise.promise();
+    unregisterVerticle(deploymentName, deploymentID)
+      .onSuccess(result -> {
+        logger.info("Successfully unregistered verticle: {}", deploymentName);
         message.reply("Unregistered successfully.");
-      } else {
-        message.fail(500, ar.cause().getMessage());
-      }
-    });
+      })
+      .onFailure(cause -> {
+        logger.error("Failed to unregister verticle: {}", deploymentName, cause);
+        message.fail(500, cause.getMessage());
+      });
+    return promise.future();
   }
 
   private void handleGetRegisteredVerticles(Message<Object> message, String deploymentName) {

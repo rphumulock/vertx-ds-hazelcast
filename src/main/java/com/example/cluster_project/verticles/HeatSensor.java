@@ -36,21 +36,21 @@ public class HeatSensor extends AbstractVerticle {
 
     consumer.handler(message -> {
       JsonObject messageBody = message.body();
-      String eventType = messageBody.getString("eventType");
+      String action = messageBody.getString("action");
 
       JsonObject payload = new JsonObject()
         .put("status", "success")
         .put("clusterNodeID", clusterNodeID)
         .put("deploymentID", deploymentID);
 
-      switch (eventType) {
-        case "startUpdates":
+      switch (action) {
+        case "start.updates":
           this.startUpdates();
           logger.info("Updates started for [{}] deployed on [{}].", deploymentID, clusterNodeID);
           payload.put("eventType", "start.updates.HeatSensor");
           message.reply(payload);
           break;
-        case "stopUpdates":
+        case "stop.updates":
           this.stopUpdates();
           logger.info("Updates stopped for [{}] deployed on [{}].", deploymentID, clusterNodeID);
           payload.put("eventType", "stop.updates.HeatSensor");
@@ -94,7 +94,7 @@ public class HeatSensor extends AbstractVerticle {
     String deploymentID = deploymentID();
 
     JsonObject payload = new JsonObject()
-      .put("eventType", "consume.updates.HeatSensor")
+      .put("action", "consume.updates")
       .put("clusterNodeID", clusterNodeID)
       .put("deploymentID", deploymentID)
       .put("temperature", temperature);

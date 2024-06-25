@@ -78,14 +78,14 @@ public class Partials {
   public static DomContent heatSensorUndeployButton(String clusterNodeID, String heatSensorID) {
     return button()
       .withText("Undeploy")
-      .withData("on-click.debounce_1000ms.debounce_1000ms", "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/undeploy')");
+      .withData("on-click", "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/undeploy')");
   }
 
   public static DomContent heatSensorStartUpdates(String clusterNodeID, String heatSensorID) {
     return button()
       .withText("Start Updates")
       .withData(
-        "on-click.debounce_1000ms",
+        "on-click",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/startUpdates')"
       )
       .withId("heatSensorStartUpdatesButton-" + heatSensorID);
@@ -95,7 +95,7 @@ public class Partials {
     return button()
       .withText("Stop Updates")
       .withData(
-        "on-click.debounce_1000ms",
+        "on-click",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/stopUpdates')"
       )
       .withId("heatSensorStopUpdatesButton-" + heatSensorID);
@@ -105,7 +105,7 @@ public class Partials {
     return button()
       .withText("Subscribe")
       .withData(
-        "on-click.debounce_1000ms",
+        "on-click",
         "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/subscribe')"
       )
       .withId("heatSensorSubscribeButton-" + heatSensorID);
@@ -117,7 +117,7 @@ public class Partials {
       button()
         .withText("Unsubscribe")
         .withData(
-          "on-click.debounce_1000ms",
+          "on-click",
           "$$get('/heatSensor/" + clusterNodeID + "/" + heatSensorID + "/unsubscribe')"
         )
         .withId("heatSensorUnsubscribeButton-" + heatSensorID);
@@ -164,7 +164,7 @@ public class Partials {
     return div(
       button()
         .withText("Manage Heat Sensors")
-        .withData("on-click.debounce", "$$post('/heatSensors')")
+        .withData("on-click", "$$post('/heatSensors')")
     )
       .withId("manageHeatSensorsButton");
   }

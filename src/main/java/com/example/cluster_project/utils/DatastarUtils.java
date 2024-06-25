@@ -76,6 +76,8 @@ public class DatastarUtils {
       message.append("data: settle ").append(settle).append("\n");
     }
 
+    message.append("data: vt false").append("\n");
+
     String fragment = config.getFragment();
     if (fragment != null) {
       message.append("data: fragment ").append(fragment);

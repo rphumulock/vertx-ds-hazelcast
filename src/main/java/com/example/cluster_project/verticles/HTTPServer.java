@@ -80,8 +80,8 @@ public class HTTPServer extends AbstractVerticle {
     router.get("/").handler(this::rootHandler);
     router.post("/heatSensors").handler(this::heatSensorsHandler);
     router.get("/heatSensor/:clusterNodeID/deploy").handler(this::heatSensorDeployHandler);
-//    router.get("/heatSensor/:clusterNodeID/:deploymentID/undeploy").handler(this::heatSensorUndeployHandler);
-//    router.get("/heatSensor/:clusterNodeID/:deploymentID/startUpdates").handler(this::heatSensorStartUpdatesHandler);
+    router.get("/heatSensor/:clusterNodeID/:deploymentID/undeploy").handler(this::heatSensorUndeployHandler);
+    router.get("/heatSensor/:clusterNodeID/:deploymentID/startUpdates").handler(this::heatSensorStartUpdatesHandler);
 //    router.get("/heatSensor/:clusterNodeID/:deploymentID/stopUpdates").handler(this::heatSensorStopUpdatesHandler);
 //    router.get("/heatSensor/:clusterNodeID/:deploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
 //    router.get("/heatSensor/:clusterNodeID/:deploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
@@ -90,7 +90,6 @@ public class HTTPServer extends AbstractVerticle {
   private void setupHeatSensorDashboard(HttpServerResponse response) {
     getRegisteredVerticles(MainVerticle.class.getName())
       .onSuccess(clusterNodes -> {
-        logger.info("Active nodes in the cluster: {}", clusterNodes);
         clusterNodes.forEach(clusterNodeID -> {
           heatSensorsContainer(response, clusterNodeID);
         });
@@ -152,21 +151,21 @@ public class HTTPServer extends AbstractVerticle {
   private void heatSensorConsumerHandlers(HttpServerResponse response, MessageConsumer<JsonObject> consumer, String clusterNodeID) {
     consumer.handler(msg -> {
       JsonObject payload = msg.body();
-      String eventType = payload.getString("eventType");
-      switch (eventType) {
-        case "deploy.HeatSensor":
+      String action = payload.getString("action");
+      switch (action) {
+        case "deploy":
           addHeatSensor(response, payload);
           break;
-        case "undeploy.HeatSensor":
+        case "undeploy":
           removeHeatSensor(response, payload);
           break;
-        case "start.updates.HeatSensor":
+        case "start.updates":
           heatSensorStartUpdates(response, payload);
           break;
-        case "stop.updates.HeatSensor":
+        case "stop.updates":
           heatSensorStopUpdates(response, payload);
           break;
-        case "consume.updates.HeatSensor":
+        case "consume.updates":
           consumeSensorData(response, payload);
           break;
       }
@@ -209,6 +208,50 @@ public class HTTPServer extends AbstractVerticle {
   }
 
   /*****************************************************************************************
+   *  DEPLOY
+   *****************************************************************************************/
+
+  private void heatSensorDeployHandler(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    setHeaders(response);
+    routingContext.request().bodyHandler(body -> {
+      Map<String, String> pathParams = routingContext.pathParams();
+      String clusterNodeID = pathParams.get("clusterNodeID");
+
+      DeploymentOptions options = new DeploymentOptions().setConfig(config());
+
+      JsonObject payload = new JsonObject()
+        .put("action", "deploy")
+        .put("clusterNodeID", clusterNodeID)
+        .put("deploymentName", HeatSensor.class.getName())
+        .put("options", options.toJson());
+
+      vertx.eventBus().request("cluster.registration", payload)
+        .onSuccess(ar -> {
+          JsonObject result = (JsonObject) ar.body();
+          String deploymentID = result.getString("deploymentID");
+          payload.put("deploymentID", deploymentID);
+          vertx.eventBus().publish("cluster.HeatSensors", payload);
+          response.setStatusCode(200)
+            .end(
+              new JsonObject()
+                .put("status", "success")
+                .put("heatSensorID", deploymentID).encode()
+            );
+        })
+        .onFailure(ar -> {
+          response.setStatusCode(500)
+            .end(
+              new JsonObject()
+                .put("status", "failure")
+                .put("message", ar.getMessage()).encode()
+            );
+        });
+    });
+  }
+
+
+  /*****************************************************************************************
    *  SUBSCRIBE
    *****************************************************************************************/
 
@@ -247,15 +290,16 @@ public class HTTPServer extends AbstractVerticle {
       Map<String, String> pathParams = routingContext.pathParams();
       String clusterNodeID = pathParams.get("clusterNodeID");
       String deploymentID = pathParams.get("deploymentID");
+
       JsonObject payload = new JsonObject()
-        .put("eventType", "startUpdates")
+        .put("action", "start.updates")
         .put("clusterNodeID", clusterNodeID)
         .put("deploymentID", deploymentID);
 
       vertx.eventBus().request("HeatSensor." + clusterNodeID + "." + deploymentID, payload)
         .onSuccess(ar -> {
           JsonObject result = (JsonObject) ar.body();
-          vertx.eventBus().publish("cluster.HeatSensors", result);
+          vertx.eventBus().publish("cluster.HeatSensors", payload);
           response
             .setStatusCode(200)
             .end(
@@ -277,6 +321,44 @@ public class HTTPServer extends AbstractVerticle {
         });
     });
   }
+
+//  private void heatSensorStartUpdatesHandler(RoutingContext routingContext) {
+//    HttpServerResponse response = routingContext.response();
+//    setHeaders(response);
+//    routingContext.request().bodyHandler(body -> {
+//      Map<String, String> pathParams = routingContext.pathParams();
+//      String clusterNodeID = pathParams.get("clusterNodeID");
+//      String deploymentID = pathParams.get("deploymentID");
+//      JsonObject payload = new JsonObject()
+//        .put("eventType", "startUpdates")
+//        .put("clusterNodeID", clusterNodeID)
+//        .put("deploymentID", deploymentID);
+//
+//      vertx.eventBus().request("HeatSensor." + clusterNodeID + "." + deploymentID, payload)
+//        .onSuccess(ar -> {
+//          JsonObject result = (JsonObject) ar.body();
+//          vertx.eventBus().publish("cluster.HeatSensors", result);
+//          response
+//            .setStatusCode(200)
+//            .end(
+//              new JsonObject()
+//                .put("status", "success")
+//                .put("deploymentID", result.getString("deploymentID"))
+//                .encode()
+//            );
+//        })
+//        .onFailure(ar -> {
+//          response
+//            .setStatusCode(500)
+//            .end(
+//              new JsonObject()
+//                .put("status", "failure")
+//                .put("message", ar.getMessage())
+//                .encode()
+//            );
+//        });
+//    });
+//  }
 
   private void heatSensorStopUpdatesHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
@@ -316,32 +398,20 @@ public class HTTPServer extends AbstractVerticle {
     });
   }
 
-  /*****************************************************************************************
-   *  DEPLOY
-   *****************************************************************************************/
 
-  private void heatSensorDeployHandler(RoutingContext routingContext) {
-    HttpServerResponse response = routingContext.response();
-    setHeaders(response);
-    routingContext.request().bodyHandler(body -> {
-      Map<String, String> pathParams = routingContext.pathParams();
-      String clusterNodeID = pathParams.get("clusterNodeID");
-      JsonObject payload = new JsonObject()
-        .put("eventType", "deploy")
-        .put("clusterNodeID", clusterNodeID)
-        .put("verticleName", HeatSensor.class.getName());
-
-      vertx.eventBus().request("verticle.controller." + clusterNodeID, payload)
-        .onSuccess(ar -> {
-          JsonObject result = (JsonObject) ar.body();
-          String deploymentID = result.getString("deploymentID");
-          vertx.eventBus().publish("cluster.HeatSensors", result);
-          response.end(new JsonObject().put("status", "success").put("heatSensorID", deploymentID).encode());
-        })
-        .onFailure(ar -> {
-          response.setStatusCode(500).end(new JsonObject().put("status", "failure").put("message", ar.getMessage()).encode());
-        });
+  private Future<Void> registerAndDeployVerticle(String deploymentName, DeploymentOptions options) {
+    Promise<Void> promise = Promise.promise();
+    vertx.eventBus().request("cluster.registration", new JsonObject()
+      .put("action", "deploy")
+      .put("deploymentName", deploymentName)
+      .put("options", options.toJson()), ar -> {
+      if (ar.succeeded()) {
+        promise.complete();
+      } else {
+        promise.fail(ar.cause());
+      }
     });
+    return promise.future();
   }
 
   private void heatSensorUndeployHandler(RoutingContext routingContext) {
