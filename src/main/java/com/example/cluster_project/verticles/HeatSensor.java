@@ -3,6 +3,7 @@ package com.example.cluster_project.verticles;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -38,32 +39,26 @@ public class HeatSensor extends AbstractVerticle {
     MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("HeatSensor." + clusterID + "." + deploymentID);
 
     consumer.handler(message -> {
-      JsonObject messageBody = message.body();
-      String action = messageBody.getString("action");
+      String action = message.headers().get("action");
+      JsonObject body = message.body();
+      String messageClusterID = body.getString("clusterID");
+      String messageDeploymentID = body.getString("messageDeploymentID");
 
-      JsonObject payload = new JsonObject()
+      JsonObject reply = new JsonObject()
         .put("status", "success")
-        .put("clusterID", clusterID)
         .put("deploymentID", deploymentID);
 
       switch (action) {
-        case "start.updates":
+        case "startUpdates":
           this.startUpdates();
-          addDeploymentToActiveSensors(deploymentID)
-            .onSuccess(v -> logger.info("Deployment ID {} added to activeSensors", deploymentID))
-            .onFailure(cause -> logger.error("Failed to add Deployment ID {} to activeSensors", deploymentID, cause));
-          logger.info("Updates started for [{}] deployed on [{}].", deploymentID, clusterID);
-          payload.put("eventType", "start.updates.HeatSensor");
-          message.reply(payload);
+          return proxy.activated(HeatSensor.class.getName(), startedID)
+          logger.info("Updates started for [{}] deployed on [{}].", messageClusterID, messageDeploymentID);
+          message.reply(reply);
           break;
-        case "stop.updates":
+        case "stopUpdates":
           this.stopUpdates();
-          removeDeploymentFromActiveSensors(deploymentID)
-            .onSuccess(v -> logger.info("Deployment ID {} removed from activeSensors", deploymentID))
-            .onFailure(cause -> logger.error("Failed to remove Deployment ID {} from activeSensors", deploymentID, cause));
-          logger.info("Updates stopped for [{}] deployed on [{}].", deploymentID, clusterID);
-          payload.put("eventType", "stop.updates.HeatSensor");
-          message.reply(payload);
+          logger.info("Updates stopped for [{}] deployed on [{}].", messageClusterID, messageDeploymentID);
+          message.reply(reply);
           break;
       }
     });
@@ -85,48 +80,6 @@ public class HeatSensor extends AbstractVerticle {
     });
   }
 
-
-  private Future<Void> addDeploymentToActiveSensors(String deploymentID) {
-    Promise<Void> promise = Promise.promise();
-    vertx.sharedData().<String, JsonArray>getAsyncMap("activeSensors")
-      .onSuccess(map -> {
-        map.get("activeSensors")
-          .onSuccess(deploymentIDs -> {
-            if (deploymentIDs == null) {
-              deploymentIDs = new JsonArray();
-            }
-            deploymentIDs.add(deploymentID);
-            map.put("activeSensors", deploymentIDs)
-              .onSuccess(v -> promise.complete())
-              .onFailure(promise::fail);
-          })
-          .onFailure(promise::fail);
-      })
-      .onFailure(promise::fail);
-    return promise.future();
-  }
-
-  private Future<Void> removeDeploymentFromActiveSensors(String deploymentID) {
-    Promise<Void> promise = Promise.promise();
-    vertx.sharedData().<String, JsonArray>getAsyncMap("activeSensors")
-      .onSuccess(map -> {
-        map.get("activeSensors")
-          .onSuccess(deploymentIDs -> {
-            if (deploymentIDs != null && deploymentIDs.contains(deploymentID)) {
-              deploymentIDs.remove(deploymentID);
-              map.put("activeSensors", deploymentIDs)
-                .onSuccess(v -> promise.complete())
-                .onFailure(promise::fail);
-            } else {
-              promise.complete();
-            }
-          })
-          .onFailure(promise::fail);
-      })
-      .onFailure(promise::fail);
-    return promise.future();
-  }
-
   private void startUpdates() {
     try {
       this.timerID = vertx.setTimer(random.nextInt(2000), this::update);
@@ -144,15 +97,16 @@ public class HeatSensor extends AbstractVerticle {
     String clusterID = config().getString("clusterID");
     String deploymentID = deploymentID();
 
-    JsonObject payload = new JsonObject()
-      .put("action", "consume.updates")
+    JsonObject message = new JsonObject()
       .put("clusterID", clusterID)
       .put("deploymentID", deploymentID)
       .put("temperature", temperature);
 
-    logger.debug("Heat Sensor Data from: {}.", payload.toString());
+    DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "consumeUpdates");
 
-    vertx.eventBus().publish("cluster.HeatSensors", payload);
+    logger.debug("Heat Sensor Data from: {}.", message.toString());
+
+    vertx.eventBus().publish("cluster.HeatSensors", message, deliveryOptions);
     startUpdates();
   }
 

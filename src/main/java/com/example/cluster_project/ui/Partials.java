@@ -5,12 +5,7 @@ import j2html.tags.DomContent;
 
 import static j2html.TagCreator.*;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class Partials {
-
-  private static final Logger logger = LoggerFactory.getLogger(Partials.class);
 
   public static String indexTemplate(String clusterID) {
     var title = "Cluster: " + clusterID;
@@ -101,13 +96,13 @@ public class Partials {
     return button()
       .withText("Deploy")
       .withStyle("margin: 0px 5px;")
-      .withData("on-click", "$$get('/heatSensor/" + clusterID + "/deploy')");
+      .withData("on-click", "$$post('/heatSensor/" + clusterID + "/deploy')");
   }
 
   public static DomContent heatSensorUndeployButton(String clusterID, String heatSensorID) {
     return button()
       .withText("Undeploy")
-      .withData("on-click", "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/undeploy')");
+      .withData("on-click", "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/undeploy')");
   }
 
   public static DomContent heatSensorStartUpdates(String clusterID, String heatSensorID) {
@@ -163,7 +158,6 @@ public class Partials {
   }
 
   public static DomContent heatSensorDataTemplate(String clusterNodeID, String heatSensorID, String temperature) {
-    logger.debug("SensorData from: heatSensorID: {} temp: {}", heatSensorID, temperature);
     return div()
       .withText(temperature)
       .withId("heatSensorUpdates-" + heatSensorID);

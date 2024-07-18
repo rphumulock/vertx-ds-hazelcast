@@ -8,6 +8,7 @@ import com.example.cluster_project.verticles.HeatSensor;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 
 import io.vertx.serviceproxy.ServiceBinder;
@@ -16,11 +17,14 @@ import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.example.cluster_project.utils.DatastarUtils.*;
+
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
 
-  private MessageConsumer<JsonObject> consumer;
+
+  private ClusterRegistrationService proxy;
 
   public static void main(String[] args) {
     HazelcastClusterManager mgr = new HazelcastClusterManager();
@@ -42,10 +46,10 @@ public class MainVerticle extends AbstractVerticle {
     });
   }
 
+
   @Override
   public void start(Promise<Void> startPromise) {
-    String clusterID = deploymentID();
-    JsonObject config = new JsonObject().put("clusterID", clusterID);
+    JsonObject config = new JsonObject().put("clusterID", deploymentID());
     DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
     ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
@@ -53,8 +57,10 @@ public class MainVerticle extends AbstractVerticle {
       .setAddress("cluster.registration")
       .register(ClusterRegistrationService.class, service);
 
-    ClusterRegistrationService proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
-    proxy.deployVerticle(clusterID, HeatSensor.class.getName(), options)
+    proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
+    proxy.registerVerticle(deploymentID(), MainVerticle.class.getName(), deploymentID())
+      .compose(v -> proxy.deployVerticle(deploymentID(), HTTPServer.class.getName(), options))
+      .compose(v -> setupConsumers())
       .onSuccess(v -> {
         logger.info("All verticles deployed successfully.");
         startPromise.complete();
@@ -64,6 +70,88 @@ public class MainVerticle extends AbstractVerticle {
         startPromise.fail(cause);
       });
   }
+
+  public Future<Void> setupConsumers() {
+    Promise<Void> promise = Promise.promise();
+
+    MessageConsumer<JsonObject> deployConsumer = vertx.eventBus().consumer("deploy-heat-sensor." + deploymentID());
+    handleDeployConsumer(deployConsumer);
+    MessageConsumer<JsonObject> undeployConsumer = vertx.eventBus().consumer("undeploy-heat-sensor." + deploymentID());
+    handleDeployConsumer(undeployConsumer);
+
+    promise.complete();
+    return promise.future();
+  }
+
+  public void handleDeployConsumer(MessageConsumer<JsonObject> consumer) {
+    consumer.handler(message -> {
+      String action = message.headers().get("action");
+      switch (action) {
+        case "deploy":
+          deployVerticle(message);
+          break;
+        case "undeploy":
+          undeployVerticle(message);
+          break;
+      }
+    });
+    consumer.completionHandler(res -> {
+      if (res.succeeded()) {
+        logger.info("deploy-heat-sensor.{} consumer completionHandler succeeded.", deploymentID());
+      } else {
+        logger.info("deploy-heat-sensor.{} consumer completionHandler failed.", deploymentID());
+      }
+    });
+    consumer.exceptionHandler(res -> {
+      logger.info("deploy-heat-sensor.{} consumer exceptionHandler succeeded.", deploymentID());
+    });
+    consumer.endHandler(res -> {
+      logger.info("deploy-heat-sensor.{} consumer endHandler failed.", deploymentID());
+    });
+  }
+
+  public void deployVerticle(Message<JsonObject> message) {
+    JsonObject body = message.body();
+    String deploymentName = body.getString("deploymentName");
+    DeploymentOptions options = new DeploymentOptions(body.getJsonObject("options"));
+
+    proxy.deployVerticle(deploymentID(), deploymentName, options)
+      .onSuccess(deploymentID -> {
+        JsonObject reply = new JsonObject()
+          .put("status", "success")
+          .put("deploymentID", deploymentID);
+        message.reply(reply);
+      })
+      .onFailure(err -> {
+        JsonObject reply = new JsonObject()
+          .put("status", "failure")
+          .put("message", err.getMessage());
+        message.reply(reply);
+      });
+  }
+
+  public void undeployVerticle(Message<JsonObject> message) {
+    JsonObject body = message.body();
+    String deploymentID = body.getString("deploymentID");
+    String deploymentName = body.getString("deploymentName");
+
+    proxy.undeployVerticle(deploymentID(), deploymentName, deploymentID)
+      .onSuccess(undeploymentID -> {
+        JsonObject reply = new JsonObject()
+          .put("status", "success")
+          .put("undeploymentID", undeploymentID);
+        message.reply(reply);
+      })
+      .onFailure(err -> {
+        JsonObject reply = new JsonObject()
+          .put("status", "failure")
+          .put("message", err.getMessage());
+        message.reply(reply);
+      });
+  }
+
+}
+
 
 //  @Override
 //  public void start(Promise<Void> startPromise) {
@@ -92,20 +180,21 @@ public class MainVerticle extends AbstractVerticle {
 ////      });
 //  }
 
-  @Override
-  public void stop(Promise<Void> stopPromise) {
-    String clusterID = deploymentID();
-    if (this.consumer.isRegistered()) {
-      this.consumer.unregister()
-        .onComplete(res -> {
-          if (res.succeeded()) {
-            logger.info("verticle.controller unregistered succeeded. clusterID-[{}].", clusterID);
-          } else {
-            logger.error("verticle.controller unregistered failed. clusterID-[{}].", clusterID);
-          }
-        });
-    }
-  }
+//  @Override
+//  public void stop(Promise<Void> stopPromise) {
+//    String clusterID = deploymentID();
+//    if (this.consumer.isRegistered()) {
+//      this.consumer.unregister()
+//        .onComplete(res -> {
+//          if (res.succeeded()) {
+//            logger.info("verticle.controller unregistered succeeded. clusterID-[{}].", clusterID);
+//          } else {
+//            logger.error("verticle.controller unregistered failed. clusterID-[{}].", clusterID);
+//          }
+//        });
+//    }
+//  }
+
 
 //  private Future<String> deployClusterRegistration(DeploymentOptions options) {
 //    Promise<String> promise = Promise.promise();
@@ -122,39 +211,39 @@ public class MainVerticle extends AbstractVerticle {
 //    return promise.future();
 //  }
 
-  private Future<Void> registerVerticle(String deploymentName, String deploymentID, String clusterID) {
-    Promise<Void> promise = Promise.promise();
-    vertx.eventBus().request("cluster.registration", new JsonObject()
-      .put("action", "register")
-      .put("deploymentName", deploymentName)
-      .put("clusterID", clusterID)
-      .put("deploymentID", deploymentID), ar -> {
-      if (ar.succeeded()) {
-        promise.complete();
-      } else {
-        promise.fail(ar.cause());
-      }
-    });
-    return promise.future();
-  }
-
-  private Future<Void> registerAndDeployVerticle(String deploymentName, DeploymentOptions options) {
-    Promise<Void> promise = Promise.promise();
-    vertx.eventBus().request("cluster.registration", new JsonObject()
-      .put("action", "deploy")
-      .put("clusterID", deploymentID())
-      .put("deploymentName", deploymentName)
-      .put("options", options.toJson()), ar -> {
-      if (ar.succeeded()) {
-        promise.complete();
-      } else {
-        promise.fail(ar.cause());
-      }
-    });
-    return promise.future();
-  }
-
-}
+//  private Future<Void> registerVerticle(String deploymentName, String deploymentID, String clusterID) {
+//    Promise<Void> promise = Promise.promise();
+//    vertx.eventBus().request("cluster.registration", new JsonObject()
+//      .put("action", "register")
+//      .put("deploymentName", deploymentName)
+//      .put("clusterID", clusterID)
+//      .put("deploymentID", deploymentID), ar -> {
+//      if (ar.succeeded()) {
+//        promise.complete();
+//      } else {
+//        promise.fail(ar.cause());
+//      }
+//    });
+//    return promise.future();
+//  }
+//
+//  private Future<Void> registerAndDeployVerticle(String deploymentName, DeploymentOptions options) {
+//    Promise<Void> promise = Promise.promise();
+//    vertx.eventBus().request("cluster.registration", new JsonObject()
+//      .put("action", "deploy")
+//      .put("clusterID", deploymentID())
+//      .put("deploymentName", deploymentName)
+//      .put("options", options.toJson()), ar -> {
+//      if (ar.succeeded()) {
+//        promise.complete();
+//      } else {
+//        promise.fail(ar.cause());
+//      }
+//    });
+//    return promise.future();
+//  }
+//
+//}
 
 //  private void setupVerticleController() {
 //    String clusterID = deploymentID();

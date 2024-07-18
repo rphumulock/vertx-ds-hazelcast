@@ -24,7 +24,17 @@ public interface ClusterRegistrationService {
 
   Future<String> deployVerticle(String clusterID, String deploymentName, DeploymentOptions options);
 
-  Future<JsonArray> registerVerticle(String clusterID,  String deploymentName, String deploymentID);
+  Future<String> undeployVerticle(String clusterID, String deploymentName, String deploymentID);
+
+  Future<JsonArray> registerVerticle(String clusterID, String deploymentName, String deploymentID);
+
+  Future<String> unregisterVerticle(String clusterID, String deploymentName, String deploymentID);
+
+  Future<JsonArray> getRegistry(String deploymentName);
 
   Future<Void> logDeployment(String clusterID, String deploymentName, String deploymentID, JsonArray jsonArray);
+
+  Future<Void> logActivated(String deploymentID, JsonArray jsonArray);
+
+  Future<JsonArray> activated(String deploymentName, String deploymentID);
 }
