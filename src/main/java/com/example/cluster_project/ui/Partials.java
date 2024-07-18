@@ -1,4 +1,4 @@
-package com.example.cluster_project.ui.partials;
+package com.example.cluster_project.ui;
 
 import io.vertx.core.json.JsonObject;
 import j2html.tags.DomContent;

@@ -5,7 +5,10 @@ import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.AsyncMap;
+
 
 @ProxyGen
 @VertxGen
@@ -19,15 +22,9 @@ public interface ClusterRegistrationService {
     return new ClusterRegistrationServiceVertxEBProxy(vertx, address);
   }
 
-  Future<Void> deployVerticle(String deploymentName, DeploymentOptions options);
+  Future<String> deployVerticle(String clusterID, String deploymentName, DeploymentOptions options);
 
-  Future<Void> undeployVerticle(String deploymentID);
+  Future<JsonArray> registerVerticle(String clusterID,  String deploymentName, String deploymentID);
 
-  Future<Void> registerVerticle(String deploymentName, String deploymentID);
-
-  Future<Void> unregisterVerticle(String deploymentName, String deploymentID);
-
-  Future<JsonObject> getRegistry();
-
-  Future<JsonObject> getVerticles(String deploymentName, String clusterID);
+  Future<Void> logDeployment(String clusterID, String deploymentName, String deploymentID, JsonArray jsonArray);
 }

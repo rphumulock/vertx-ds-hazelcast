@@ -2,10 +2,9 @@ package com.example.cluster_project;
 
 import com.example.cluster_project.services.ClusterRegistrationService;
 import com.example.cluster_project.services.ClusterRegistrationServiceImpl;
-import com.example.cluster_project.verticles.ClusterRegistration;
+
 import com.example.cluster_project.verticles.HTTPServer;
 import com.example.cluster_project.verticles.HeatSensor;
-
 import io.vertx.core.*;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
@@ -46,20 +45,16 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Promise<Void> startPromise) {
     String clusterID = deploymentID();
-    JsonObject config = new JsonObject()
-      .put("clusterID", clusterID);
-
-    DeploymentOptions options = new DeploymentOptions()
-      .setConfig(config);
+    JsonObject config = new JsonObject().put("clusterID", clusterID);
+    DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
     ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
     new ServiceBinder(vertx)
       .setAddress("cluster.registration")
       .register(ClusterRegistrationService.class, service);
 
-    deployClusterRegistration(options)
-      .compose(v -> registerVerticle(MainVerticle.class.getName(), deploymentID(), deploymentID()))
-      .compose(v -> registerAndDeployVerticle(HTTPServer.class.getName(), options))
+    ClusterRegistrationService proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
+    proxy.deployVerticle(clusterID, HeatSensor.class.getName(), options)
       .onSuccess(v -> {
         logger.info("All verticles deployed successfully.");
         startPromise.complete();
@@ -69,6 +64,33 @@ public class MainVerticle extends AbstractVerticle {
         startPromise.fail(cause);
       });
   }
+
+//  @Override
+//  public void start(Promise<Void> startPromise) {
+//    String clusterID = deploymentID();
+//    JsonObject config = new JsonObject()
+//      .put("clusterID", clusterID);
+//
+//    DeploymentOptions options = new DeploymentOptions()
+//      .setConfig(config);
+//
+//    ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
+//    new ServiceBinder(vertx)
+//      .setAddress("cluster.registration")
+//      .register(ClusterRegistrationService.class, service);
+//
+////    deployClusterRegistration(options)
+////      .compose(v -> registerVerticle(MainVerticle.class.getName(), deploymentID(), deploymentID()))
+////      .compose(v -> registerAndDeployVerticle(HTTPServer.class.getName(), options))
+////      .onSuccess(v -> {
+////        logger.info("All verticles deployed successfully.");
+////        startPromise.complete();
+////      })
+////      .onFailure(cause -> {
+////        logger.error("Failed to deploy verticles", cause);
+////        startPromise.fail(cause);
+////      });
+//  }
 
   @Override
   public void stop(Promise<Void> stopPromise) {
@@ -85,20 +107,20 @@ public class MainVerticle extends AbstractVerticle {
     }
   }
 
-  private Future<String> deployClusterRegistration(DeploymentOptions options) {
-    Promise<String> promise = Promise.promise();
-    vertx.deployVerticle(ClusterRegistration.class.getName(), options, res -> {
-      if (res.succeeded()) {
-        String deploymentID = res.result();
-        logger.info("ClusterRegistration verticle deployed successfully with deploymentID: {}", deploymentID);
-        promise.complete(deploymentID);
-      } else {
-        logger.error("Failed to deploy ClusterRegistration verticle", res.cause());
-        promise.fail(res.cause());
-      }
-    });
-    return promise.future();
-  }
+//  private Future<String> deployClusterRegistration(DeploymentOptions options) {
+//    Promise<String> promise = Promise.promise();
+//    vertx.deployVerticle(ClusterRegistration.class.getName(), options, res -> {
+//      if (res.succeeded()) {
+//        String deploymentID = res.result();
+//        logger.info("ClusterRegistration verticle deployed successfully with deploymentID: {}", deploymentID);
+//        promise.complete(deploymentID);
+//      } else {
+//        logger.error("Failed to deploy ClusterRegistration verticle", res.cause());
+//        promise.fail(res.cause());
+//      }
+//    });
+//    return promise.future();
+//  }
 
   private Future<Void> registerVerticle(String deploymentName, String deploymentID, String clusterID) {
     Promise<Void> promise = Promise.promise();

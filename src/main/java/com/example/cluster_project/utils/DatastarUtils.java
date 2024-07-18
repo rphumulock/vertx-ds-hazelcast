@@ -1,6 +1,6 @@
 package com.example.cluster_project.utils;
 
-import com.example.cluster_project.ui.partials.Partials;
+import com.example.cluster_project.ui.Partials;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
