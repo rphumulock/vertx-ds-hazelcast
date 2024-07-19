@@ -3,26 +3,25 @@ package com.example.cluster_project;
 import com.example.cluster_project.services.ClusterRegistrationService;
 import com.example.cluster_project.services.ClusterRegistrationServiceImpl;
 
+import com.example.cluster_project.utils.MessageWrapper;
 import com.example.cluster_project.verticles.HTTPServer;
-import com.example.cluster_project.verticles.HeatSensor;
+
 import io.vertx.core.*;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 
 import io.vertx.serviceproxy.ServiceBinder;
+
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.example.cluster_project.utils.DatastarUtils.*;
-
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
-
 
   private ClusterRegistrationService proxy;
 
@@ -91,6 +90,7 @@ public class MainVerticle extends AbstractVerticle {
           deployVerticle(message);
           break;
         case "undeploy":
+          logger.info("switch.undeploy {}", deploymentID());
           undeployVerticle(message);
           break;
       }
@@ -111,11 +111,15 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   public void deployVerticle(Message<JsonObject> message) {
-    JsonObject body = message.body();
+    Buffer buffer = (Buffer) message.body();
+    MessageWrapper wrapper = new MessageWrapper();
+    wrapper.readFromBuffer(0, buffer);
+    JsonObject body = wrapper.getMessage();
+    DeploymentOptions options = wrapper.getDeploymentOptions();
+    String clusterID = body.getString("clusterID");
     String deploymentName = body.getString("deploymentName");
-    DeploymentOptions options = new DeploymentOptions(body.getJsonObject("options"));
 
-    proxy.deployVerticle(deploymentID(), deploymentName, options)
+    proxy.deployVerticle(clusterID, deploymentName, options)
       .onSuccess(deploymentID -> {
         JsonObject reply = new JsonObject()
           .put("status", "success")
@@ -135,8 +139,14 @@ public class MainVerticle extends AbstractVerticle {
     String deploymentID = body.getString("deploymentID");
     String deploymentName = body.getString("deploymentName");
 
+    logger.info("success undeployVerticle {} {}", deploymentID, deploymentName);
+
+
     proxy.undeployVerticle(deploymentID(), deploymentName, deploymentID)
       .onSuccess(undeploymentID -> {
+        logger.info("success undeployVerticle  undeploymentID {} {}", deploymentID, deploymentName);
+
+
         JsonObject reply = new JsonObject()
           .put("status", "success")
           .put("undeploymentID", undeploymentID);

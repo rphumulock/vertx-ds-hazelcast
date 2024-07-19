@@ -110,7 +110,7 @@ public class Partials {
       .withText("Start Updates")
       .withData(
         "on-click",
-        "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/startUpdates')"
+        "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/startUpdates')"
       )
       .withId("heatSensorStartUpdatesButton-" + heatSensorID);
   }
@@ -120,7 +120,7 @@ public class Partials {
       .withText("Stop Updates")
       .withData(
         "on-click",
-        "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/stopUpdates')"
+        "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/stopUpdates')"
       )
       .withId("heatSensorStopUpdatesButton-" + heatSensorID);
   }

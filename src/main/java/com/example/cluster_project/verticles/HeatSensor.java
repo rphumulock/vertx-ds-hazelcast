@@ -1,5 +1,6 @@
 package com.example.cluster_project.verticles;
 
+import com.example.cluster_project.services.ClusterRegistrationService;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -17,6 +18,8 @@ public class HeatSensor extends AbstractVerticle {
 
   private final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
 
+  private ClusterRegistrationService proxy;
+
   private long timerID;
   private final Random random = new Random();
   private double temperature = 21.0;
@@ -24,7 +27,8 @@ public class HeatSensor extends AbstractVerticle {
   @Override
   public void start() {
     logger.debug("Starting HeatSensor: {}", getClass().getName());
-    setupConsumer();
+    proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
+    setupConsumers();
   }
 
   @Override
@@ -32,32 +36,59 @@ public class HeatSensor extends AbstractVerticle {
     stopUpdates();
   }
 
-  private void setupConsumer() {
+  public Future<Void> setupConsumers() {
+    Promise<Void> promise = Promise.promise();
+
     String clusterID = config().getString("clusterID");
     String deploymentID = deploymentID();
 
-    MessageConsumer<JsonObject> consumer = vertx.eventBus().consumer("HeatSensor." + clusterID + "." + deploymentID);
+    MessageConsumer<JsonObject> updatesConsumer = vertx.eventBus().consumer("HeatSensor." + clusterID + "." + deploymentID);
+    handleUpdatesConsumer(updatesConsumer, clusterID, deploymentID);
 
+    promise.complete();
+    return promise.future();
+  }
+
+  public void handleUpdatesConsumer(MessageConsumer<JsonObject> consumer, String clusterIDs, String deploymentIDs) {
     consumer.handler(message -> {
       String action = message.headers().get("action");
       JsonObject body = message.body();
-      String messageClusterID = body.getString("clusterID");
-      String messageDeploymentID = body.getString("messageDeploymentID");
+      String clusterID = body.getString("clusterID");
+      String deploymentID = body.getString("deploymentID");
 
-      JsonObject reply = new JsonObject()
-        .put("status", "success")
-        .put("deploymentID", deploymentID);
+      JsonObject reply = new JsonObject();
 
       switch (action) {
         case "startUpdates":
           this.startUpdates();
-          return proxy.activated(HeatSensor.class.getName(), startedID)
-          logger.info("Updates started for [{}] deployed on [{}].", messageClusterID, messageDeploymentID);
-          message.reply(reply);
+          proxy.registerActivated(HeatSensor.class.getName(), deploymentID)
+            .onSuccess(v -> {
+              logger.info("Updates started for [{}] deployed on [{}].", clusterID, deploymentID);
+              reply.put("status", "success").put("deploymentID", deploymentID);
+              message.reply(reply);
+            })
+            .onFailure(err -> {
+              logger.error(err.getMessage());
+              reply.put("status", "failure").put("message", err.getMessage());
+              message.reply(reply);
+            });
           break;
         case "stopUpdates":
           this.stopUpdates();
-          logger.info("Updates stopped for [{}] deployed on [{}].", messageClusterID, messageDeploymentID);
+          proxy.unregisterActivated(HeatSensor.class.getName(), deploymentID)
+            .onSuccess(v -> {
+              logger.info("Updates stopped for [{}] deployed on [{}].", clusterID, deploymentID);
+              reply.put("status", "success").put("deploymentID", deploymentID);
+              message.reply(reply);
+            })
+            .onFailure(err -> {
+              logger.error(err.getMessage());
+              reply.put("status", "failure").put("message", err.getMessage());
+              message.reply(reply);
+            });
+          break;
+        default:
+          reply.put("status", "failure").put("message", "Unknown action");
           message.reply(reply);
           break;
       }
@@ -65,18 +96,18 @@ public class HeatSensor extends AbstractVerticle {
 
     consumer.completionHandler(res -> {
       if (res.succeeded()) {
-        logger.info("The verticle.controller handler registration for Cluster Node: {} has reached all nodes.", clusterID);
+        logger.info("HeatSensor.{}.{} completionHandler succeeded", clusterIDs, deploymentIDs);
       } else {
-        logger.info("The verticle.controller handler registration for Cluster Node: {} has failed.", clusterID);
+        logger.info("HeatSensor completionHandler failed", res.cause());
       }
     });
 
     consumer.endHandler(res -> {
-      logger.info("Unregistering verticle.controller consumer for Cluster Node: {}.", clusterID);
+      logger.info("HeatSensor endHandler");
     });
 
     consumer.exceptionHandler(res -> {
-      logger.error("There was an exception in the verticle.controller consumer for Cluster Node: {}.", clusterID);
+      logger.error("HeatSensor exceptionHandler");
     });
   }
 
@@ -104,7 +135,7 @@ public class HeatSensor extends AbstractVerticle {
 
     DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "consumeUpdates");
 
-    logger.debug("Heat Sensor Data from: {}.", message.toString());
+//    logger.debug("Heat Sensor Data from: {}.", message.toString());
 
     vertx.eventBus().publish("cluster.HeatSensors", message, deliveryOptions);
     startUpdates();

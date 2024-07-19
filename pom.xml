@@ -24,8 +24,8 @@
 
     <main.verticle>com.example.cluster_project.MainVerticle</main.verticle>
     <launcher.class>io.vertx.core.Launcher</launcher.class>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
+    <maven.compiler.source>22</maven.compiler.source>
+    <maven.compiler.target>22</maven.compiler.target>
   </properties>
 
 
@@ -79,6 +79,12 @@
       <artifactId>vertx-codegen</artifactId>
       <version>${vertx.version}</version>
       <classifier>processor</classifier>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.13.4.1</version>
     </dependency>
 
     <dependency>
@@ -159,8 +165,8 @@
           <annotationProcessors>
             <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
           </annotationProcessors>
-          <source>11</source>
-          <target>11</target>
+          <source>22</source>
+          <target>22</target>
           <compilerArgs>
             <arg>--add-exports</arg>
             <arg>java.base/jdk.internal.ref=ALL-UNNAMED</arg>

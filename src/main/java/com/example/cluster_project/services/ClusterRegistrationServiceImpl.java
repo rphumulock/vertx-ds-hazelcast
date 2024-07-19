@@ -81,20 +81,27 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
           .compose(map -> map.get(deploymentName)
             .compose(fetchedJsonArray -> {
               if (fetchedJsonArray != null) {
-                JsonArray updatedJsonArray = fetchedJsonArray.stream()
-                  .filter(obj -> !((JsonObject) obj).getString("deploymentID").equals(deploymentID))
-                  .collect(JsonArray::new, JsonArray::add, JsonArray::addAll);
-                logDeployment(clusterID, deploymentName, deploymentID, updatedJsonArray);
-                return map.put(deploymentName, updatedJsonArray);
+                JsonArray updatedJsonArray = new JsonArray();
+                for (int i = 0; i < fetchedJsonArray.size(); i++) {
+                  JsonObject obj = fetchedJsonArray.getJsonObject(i);
+                  if (!obj.getString("deploymentID").equals(deploymentID)) {
+                    updatedJsonArray.add(obj);
+                  }
+                }
+                return map.put(deploymentName, updatedJsonArray)
+                  .map(v -> {
+                    logUndeployment(clusterID, deploymentName, deploymentID, updatedJsonArray);
+                    return deploymentID;
+                  });
               } else {
-                return Future.succeededFuture();
+                return Future.succeededFuture(deploymentID);
               }
             })
           )
           .onComplete(ar -> lock.release())
-          .onSuccess(v -> promise.complete(deploymentID))
           .onFailure(promise::fail)
       )
+      .onSuccess(promise::complete)
       .onFailure(promise::fail);
 
     return promise.future();
@@ -116,33 +123,11 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
   }
 
   @Override
-  public Future<Void> logDeployment(String clusterID, String deploymentName, String deploymentID, JsonArray jsonArray) {
-    Promise<Void> promise = Promise.promise();
-
-    logger.info("Verticle deployed and registered: deploymentName={}, currentRegistry={}",
-      deploymentName, jsonArray.encode());
-    promise.complete();
-
-    return promise.future();
-  }
-
-  @Override
-  public Future<Void> logActivated(String deploymentName, JsonArray jsonArray) {
-    Promise<Void> promise = Promise.promise();
-
-    logger.info("Verticle activated: deploymentName={}, currentRegistry={}",
-      deploymentName, jsonArray.encode());
-    promise.complete();
-
-    return promise.future();
-  }
-
-
-  @Override
-  public Future<JsonArray> activated(String deploymentName, String deploymentID) {
+  public Future<JsonArray> registerActivated(String deploymentName, String deploymentID) {
     Promise<JsonArray> promise = Promise.promise();
     String lockName = "active." + deploymentName;
     String key = "active." + deploymentName;
+
     vertx.sharedData().getLockWithTimeout(lockName, 5000)
       .compose(lock ->
         vertx.sharedData().<String, JsonArray>getAsyncMap(key)
@@ -158,6 +143,64 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
       )
       .onSuccess(promise::complete)
       .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  @Override
+  public Future<JsonArray> unregisterActivated(String deploymentName, String deploymentID) {
+    Promise<JsonArray> promise = Promise.promise();
+    String lockName = "active." + deploymentName;
+    String key = "active." + deploymentName;
+
+    vertx.sharedData().getLockWithTimeout(lockName, 5000)
+      .compose(lock ->
+        vertx.sharedData().<String, JsonArray>getAsyncMap(key)
+          .compose(map ->
+            map.get(key).compose(fetchedJsonArray -> {
+              JsonArray jsonArray = fetchedJsonArray != null ? fetchedJsonArray : new JsonArray();
+              jsonArray.remove(deploymentID);
+              logActivated(key, jsonArray); // You might want to change this method name to something like logUnactivated
+              return map.put(key, jsonArray).map(v -> jsonArray);
+            })
+          )
+          .onComplete(ar -> lock.release())
+      )
+      .onSuccess(promise::complete)
+      .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  @Override
+  public Future<Void> logDeployment(String clusterID, String deploymentName, String deploymentID, JsonArray jsonArray) {
+    Promise<Void> promise = Promise.promise();
+
+    logger.info("Verticle deployed and registered: deploymentName={}, currentRegistry={}",
+      deploymentName, jsonArray.encode());
+    promise.complete();
+
+    return promise.future();
+  }
+
+  @Override
+  public Future<Void> logUndeployment(String clusterID, String deploymentName, String deploymentID, JsonArray jsonArray) {
+    Promise<Void> promise = Promise.promise();
+
+    logger.info("Verticle undeployed and unregistered: deploymentName={}, currentRegistry={}",
+      deploymentName, jsonArray.encode());
+    promise.complete();
+
+    return promise.future();
+  }
+
+  @Override
+  public Future<Void> logActivated(String deploymentName, JsonArray jsonArray) {
+    Promise<Void> promise = Promise.promise();
+
+    logger.info("Verticle activated: deploymentName={}, currentRegistry={}",
+      deploymentName, jsonArray.encode());
+    promise.complete();
 
     return promise.future();
   }
