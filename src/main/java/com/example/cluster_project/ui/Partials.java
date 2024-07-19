@@ -23,7 +23,7 @@ public class Partials {
             .withData("store", store.encode())
         ).withClass("bg-base-300 h-full flex flex-col")
       )
-        .withClass("h-max")
+        .withStyle("height: -webkit-fill-available;")
         .withData("theme", "dim")
     );
   }

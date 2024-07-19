@@ -2,13 +2,10 @@ package com.example.cluster_project.verticles;
 
 import com.example.cluster_project.services.ClusterRegistrationService;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.MessageConsumer;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,13 +13,17 @@ import java.util.Random;
 
 public class HeatSensor extends AbstractVerticle {
 
-  private final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
+  private static final Logger logger = LoggerFactory.getLogger(HeatSensor.class);
+
+  private static final int MAX_RETRIES = 3;
+  private static final String ACTION_START_UPDATES = "startUpdates";
+  private static final String ACTION_STOP_UPDATES = "stopUpdates";
 
   private ClusterRegistrationService proxy;
-
   private long timerID;
   private final Random random = new Random();
   private double temperature = 21.0;
+  private int retryCount = 0;
 
   @Override
   public void start() {
@@ -36,95 +37,101 @@ public class HeatSensor extends AbstractVerticle {
     stopUpdates();
   }
 
-  public Future<Void> setupConsumers() {
+  private void setupConsumers() {
     Promise<Void> promise = Promise.promise();
-
     String clusterID = config().getString("clusterID");
     String deploymentID = deploymentID();
-
     MessageConsumer<JsonObject> updatesConsumer = vertx.eventBus().consumer("HeatSensor." + clusterID + "." + deploymentID);
-    handleUpdatesConsumer(updatesConsumer, clusterID, deploymentID);
 
-    promise.complete();
-    return promise.future();
-  }
-
-  public void handleUpdatesConsumer(MessageConsumer<JsonObject> consumer, String clusterIDs, String deploymentIDs) {
-    consumer.handler(message -> {
-      String action = message.headers().get("action");
-      JsonObject body = message.body();
-      String clusterID = body.getString("clusterID");
-      String deploymentID = body.getString("deploymentID");
-
-      JsonObject reply = new JsonObject();
-
-      switch (action) {
-        case "startUpdates":
-          this.startUpdates();
-          proxy.registerActivated(HeatSensor.class.getName(), deploymentID)
-            .onSuccess(v -> {
-              logger.info("Updates started for [{}] deployed on [{}].", clusterID, deploymentID);
-              reply.put("status", "success").put("deploymentID", deploymentID);
-              message.reply(reply);
-            })
-            .onFailure(err -> {
-              logger.error(err.getMessage());
-              reply.put("status", "failure").put("message", err.getMessage());
-              message.reply(reply);
-            });
-          break;
-        case "stopUpdates":
-          this.stopUpdates();
-          proxy.unregisterActivated(HeatSensor.class.getName(), deploymentID)
-            .onSuccess(v -> {
-              logger.info("Updates stopped for [{}] deployed on [{}].", clusterID, deploymentID);
-              reply.put("status", "success").put("deploymentID", deploymentID);
-              message.reply(reply);
-            })
-            .onFailure(err -> {
-              logger.error(err.getMessage());
-              reply.put("status", "failure").put("message", err.getMessage());
-              message.reply(reply);
-            });
-          break;
-        default:
-          reply.put("status", "failure").put("message", "Unknown action");
-          message.reply(reply);
-          break;
-      }
-    });
-
-    consumer.completionHandler(res -> {
+    updatesConsumer.handler(message -> handleConsumerMessage(message, clusterID, deploymentID));
+    updatesConsumer.completionHandler(res -> {
       if (res.succeeded()) {
-        logger.info("HeatSensor.{}.{} completionHandler succeeded", clusterIDs, deploymentIDs);
+        logger.info("HeatSensor.{}.{} completionHandler succeeded", clusterID, deploymentID);
+        promise.complete();
       } else {
-        logger.info("HeatSensor completionHandler failed", res.cause());
+        logger.error("HeatSensor completionHandler failed", res.cause());
+        promise.fail(res.cause());
       }
     });
 
-    consumer.endHandler(res -> {
-      logger.info("HeatSensor endHandler");
-    });
-
-    consumer.exceptionHandler(res -> {
-      logger.error("HeatSensor exceptionHandler");
-    });
+    promise.future();
   }
 
-  private void startUpdates() {
-    try {
-      this.timerID = vertx.setTimer(random.nextInt(2000), this::update);
-    } catch (Exception e) {
-      logger.error("Failed to start HeatSensor timer", e);
+  private void handleConsumerMessage(io.vertx.core.eventbus.Message<JsonObject> message, String clusterID, String deploymentID) {
+    String action = message.headers().get("action");
+    JsonObject reply = new JsonObject();
+
+    switch (action) {
+      case ACTION_START_UPDATES:
+        handleStartUpdates(clusterID, deploymentID, message, reply);
+        break;
+      case ACTION_STOP_UPDATES:
+        handleStopUpdates(clusterID, deploymentID, message, reply);
+        break;
+      default:
+        reply.put("status", "failure").put("message", "Unknown action");
+        message.reply(reply);
+        break;
     }
   }
 
-  public void stopUpdates() {
-    vertx.cancelTimer(this.timerID);
+  private void handleStartUpdates(String clusterID, String deploymentID, io.vertx.core.eventbus.Message<JsonObject> message, JsonObject reply) {
+    startUpdates();
+    proxy.registerActivated(HeatSensor.class.getName(), deploymentID)
+      .onSuccess(v -> {
+        logger.info("Updates started for [{}] deployed on [{}].", clusterID, deploymentID);
+        reply.put("status", "success").put("deploymentID", deploymentID);
+        message.reply(reply);
+      })
+      .onFailure(err -> handleFailure(reply, message, err));
+  }
+
+  private void handleStopUpdates(String clusterID, String deploymentID, io.vertx.core.eventbus.Message<JsonObject> message, JsonObject reply) {
+    stopUpdates();
+    proxy.unregisterActivated(HeatSensor.class.getName(), deploymentID)
+      .onSuccess(v -> {
+        logger.info("Updates stopped for [{}] deployed on [{}].", clusterID, deploymentID);
+        reply.put("status", "success").put("deploymentID", deploymentID);
+        message.reply(reply);
+      })
+      .onFailure(err -> handleFailure(reply, message, err));
+  }
+
+  private void handleFailure(JsonObject reply, io.vertx.core.eventbus.Message<JsonObject> message, Throwable err) {
+    logger.error("Operation failed", err);
+    reply.put("status", "failure").put("message", err.getMessage());
+    message.reply(reply);
+  }
+
+  private void startUpdates() {
+    setUpdateTimer();
+  }
+
+  private void stopUpdates() {
+    vertx.cancelTimer(timerID);
+  }
+
+  private void setUpdateTimer() {
+    try {
+      timerID = vertx.setTimer(random.nextInt(2000), this::update);
+      retryCount = 0; // Reset retry count on successful timer set
+    } catch (Exception e) {
+      handleTimerFailure(e);
+    }
+  }
+
+  private void handleTimerFailure(Exception e) {
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      logger.error("Failed to start HeatSensor timer, retrying {}/{}...", retryCount, MAX_RETRIES, e);
+      setUpdateTimer(); // Retry setting the timer
+    } else {
+      logger.error("Failed to start HeatSensor timer after {} retries", MAX_RETRIES, e);
+    }
   }
 
   private void update(long timerId) {
-    temperature = temperature + (delta() / 10);
+    temperature += delta() / 10;
     String clusterID = config().getString("clusterID");
     String deploymentID = deploymentID();
 
@@ -134,20 +141,12 @@ public class HeatSensor extends AbstractVerticle {
       .put("temperature", temperature);
 
     DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "consumeUpdates");
-
-//    logger.debug("Heat Sensor Data from: {}.", message.toString());
-
     vertx.eventBus().publish("cluster.HeatSensors", message, deliveryOptions);
-    startUpdates();
+
+    setUpdateTimer(); // Schedule the next update
   }
 
   private double delta() {
-    if (random.nextInt() > 0) {
-      return random.nextGaussian();
-    } else {
-      return -random.nextGaussian();
-    }
+    return random.nextBoolean() ? random.nextGaussian() : -random.nextGaussian();
   }
-
 }
-
