@@ -22,8 +22,8 @@ public class Partials {
             .withId("main")
             .withData("store", store.encode())
         ).withClass("bg-base-300 h-full flex flex-col")
-      ).attr("style", "height: 100%;")
-        .withClass("h-full")
+      )
+        .withClass("h-max")
         .withData("theme", "dim")
     );
   }
@@ -67,7 +67,7 @@ public class Partials {
       ).withClass("flex flex-col md:flex-row justify-between items-center")
         .withId("heatSensorControlsContainer-" + heatSensorID),
       div(
-        heatSensorUpdatesTemplate(clusterID, heatSensorID)
+        heatSensorUpdatesTemplate(heatSensorID)
       ).withId("heatSensorDataContainer-" + heatSensorID)
         .withClass("p-2 rounded-lg mt-1")
     ).withClass("border-2 border-primary p-2 my-1 rounded-lg bg-base-200")
@@ -131,7 +131,7 @@ public class Partials {
       .withId("heatSensorUnsubscribeButton-" + heatSensorID);
   }
 
-  public static DomContent heatSensorUpdatesTemplate(String clusterID, String heatSensorID) {
+  public static DomContent heatSensorUpdatesTemplate(String heatSensorID) {
     return div(
       text("Temperature:"),
       div().withId("heatSensorUpdates-" + heatSensorID)
@@ -140,7 +140,7 @@ public class Partials {
       .withId("heatSensorUpdatesContainer-" + heatSensorID);
   }
 
-  public static DomContent heatSensorDataTemplate(String clusterNodeID, String heatSensorID, String temperature) {
+  public static DomContent heatSensorDataTemplate(String heatSensorID, String temperature) {
     return div(temperature)
       .withId("heatSensorUpdates-" + heatSensorID)
       .withClass("text-xs text-base-content");
