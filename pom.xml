@@ -11,7 +11,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-    <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
+    <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
     <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
     <netty-macos-resolver.version>4.1.65.Final</netty-macos-resolver.version>
@@ -225,9 +225,48 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <!-- Exclude overlapping resources -->
+                    <exclude>META-INF/LICENSE</exclude>
+                    <exclude>META-INF/NOTICE</exclude>
+                    <exclude>META-INF/DEPENDENCIES</exclude>
+                    <exclude>META-INF/versions/9/module-info</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/FastDoubleParser-LICENSE</exclude>
+                    <exclude>META-INF/FastDoubleParser-NOTICE</exclude>
+                    <exclude>META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.properties</exclude>
+                    <exclude>META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.xml</exclude>
+                    <exclude>META-INF/io.netty.versions.properties</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <relocations>
+                <relocation>
+                  <pattern>com.fasterxml.jackson</pattern>
+                  <shadedPattern>shaded.com.fasterxml.jackson</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.apache.logging.log4j</pattern>
+                  <shadedPattern>shaded.org.apache.logging.log4j</shadedPattern>
+                </relocation>
+              </relocations>
               <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.handlers</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.schemas</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/services/**</resource>
+                </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
+                    <Main-Class>com.example.MainClass</Main-Class>
                     <Main-Class>io.vertx.core.Launcher</Main-Class>
                     <Main-Verticle>${main.verticle}</Main-Verticle>
                     <Add-Opens>java.base/java.lang</Add-Opens>
