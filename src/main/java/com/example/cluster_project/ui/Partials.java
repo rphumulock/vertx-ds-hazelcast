@@ -18,6 +18,7 @@ public class Partials {
             Partials.heatSensors()
           ).
             withClass("container").
+            withClass("bg-orange-300").
             withId("main").
             withData("store", store.encode())
         )
@@ -28,8 +29,9 @@ public class Partials {
   public static DomContent sharedHead(String title) {
     return head(
       title(title),
-      script().withSrc("https://cdn.jsdelivr.net/npm/@sudodevnull/datastar").isDefer().withType("module"),
-      link().withRel("icon").withType("image/x-icon").withHref("favicon.ico")
+      link().withRel("icon").withType("image/x-icon").withHref("favicon.ico"),
+      link().withHref("/static/css/output.css").withRel("stylesheet"),
+      script().withSrc("https://cdn.jsdelivr.net/npm/@sudodevnull/datastar").isDefer().withType("module")
     );
   }
 
@@ -185,8 +187,8 @@ public class Partials {
 
   public static DomContent heatSensors() {
     return div(
-      button()
-        .withText("Manage Heat Sensors")
+      button("Manage Heat Sensors")
+        .withClass("bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded")
         .withData("on-click", "$$post('/heatSensors')")
     )
       .withId("manageHeatSensorsButton");

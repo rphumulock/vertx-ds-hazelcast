@@ -18,6 +18,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.Session;
 import io.vertx.ext.web.handler.SessionHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.sstore.ClusteredSessionStore;
 
 import org.slf4j.Logger;
@@ -51,6 +52,8 @@ public class HTTPServer extends AbstractVerticle {
     Router router = Router.router(vertx);
     ClusteredSessionStore store = ClusteredSessionStore.create(vertx);
     router.route().handler(SessionHandler.create(store));
+    router.route().handler(StaticHandler.create("src/main/resources/"));
+
     setupRoutes(router);
 
     vertx.createHttpServer()
@@ -272,7 +275,6 @@ public class HTTPServer extends AbstractVerticle {
         .onSuccess(reply -> {
 
           logger.info("success undeploying {} {} {}", clusterID, deploymentID);
-
 
 
           JsonObject replyBody = (JsonObject) reply.body();
