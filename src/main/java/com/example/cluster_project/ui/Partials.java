@@ -13,16 +13,18 @@ public class Partials {
     return document(html(
         sharedHead(title),
         body(
-          h4("Current Node: " + clusterID).withClass("text-xl font-semibold mb-2 text-center text-teal-700"),
+          h4("Current Node: " + clusterID).withClass("text-xl font-semibold mb-2 text-center text-base-content"),
           main(
             div(
               Partials.heatSensors()
             ).withClass("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4")
-          ).withClass("container mx-auto p-4 bg-white rounded-lg shadow-lg")
+          ).withClass("container mx-auto p-4 bg-base-200 rounded-lg shadow-lg flex-1")
             .withId("main")
             .withData("store", store.encode())
-        ).withClass("bg-gray-100")
-      )
+        ).withClass("bg-base-300 h-full flex flex-col")
+      ).attr("style", "height: 100%;")
+        .withClass("h-full")
+        .withData("theme", "dim")
     );
   }
 
@@ -31,7 +33,8 @@ public class Partials {
       title(title),
       link().withRel("icon").withType("image/x-icon").withHref("favicon.ico"),
       link().withHref("/static/css/output.css").withRel("stylesheet"),
-      script().withSrc("https://cdn.jsdelivr.net/npm/@sudodevnull/datastar").isDefer().withType("module")
+      script().withSrc("https://cdn.jsdelivr.net/npm/@sudodevnull/datastar").isDefer().withType("module"),
+      style("html, body { height: 100%; margin: 0; display: flex; flex-direction: column; }")
     );
   }
 
@@ -44,13 +47,13 @@ public class Partials {
       div(
         div("Heat Sensor: " + heatSensorID)
           .withId("heatSensor-" + heatSensorID)
-          .withClass("text-sm font-medium text-teal-900"),
+          .withClass("text-sm font-medium text-base-content"),
         heatSensorActions(clusterID, heatSensorID)
       ).withClass("flex flex-col md:flex-row justify-between items-center")
         .withId("heatSensorControlsContainer-" + heatSensorID),
       div().withId("heatSensorDataContainer-" + heatSensorID)
         .withClass("p-2 rounded-lg mt-1")
-    ).withClass("border-2 border-teal-500 p-2 my-1 rounded-lg bg-white")
+    ).withClass("border-2 border-primary p-2 my-1 rounded-lg bg-base-200")
       .withId("heatSensorContainer-" + heatSensorID);
   }
 
@@ -59,7 +62,7 @@ public class Partials {
       div(
         div("Heat Sensor: " + heatSensorID)
           .withId("heatSensor-" + heatSensorID)
-          .withClass("text-sm font-medium text-teal-900"),
+          .withClass("text-sm font-medium text-base-content"),
         activeHeatSensorActions(clusterID, heatSensorID)
       ).withClass("flex flex-col md:flex-row justify-between items-center")
         .withId("heatSensorControlsContainer-" + heatSensorID),
@@ -67,7 +70,7 @@ public class Partials {
         heatSensorUpdatesTemplate(clusterID, heatSensorID)
       ).withId("heatSensorDataContainer-" + heatSensorID)
         .withClass("p-2 rounded-lg mt-1")
-    ).withClass("border-2 border-teal-500 p-2 my-1 rounded-lg bg-white")
+    ).withClass("border-2 border-primary p-2 my-1 rounded-lg bg-base-200")
       .withId("heatSensorContainer-" + heatSensorID);
   }
 
@@ -90,40 +93,40 @@ public class Partials {
 
   public static DomContent heatSensorDeployButton(String clusterID) {
     return button("Deploy")
-      .withClass("bg-teal-500 hover:bg-teal-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-success font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$post('/heatSensor/" + clusterID + "/deploy')");
   }
 
   public static DomContent heatSensorUndeployButton(String clusterID, String heatSensorID) {
     return button("Undeploy")
-      .withClass("bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-error font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/undeploy')");
   }
 
   public static DomContent heatSensorStartUpdates(String clusterID, String heatSensorID) {
     return button("Start Updates")
-      .withClass("bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-info font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/startUpdates')")
       .withId("heatSensorStartUpdatesButton-" + heatSensorID);
   }
 
   public static DomContent heatSensorStopUpdates(String clusterID, String heatSensorID) {
     return button("Stop Updates")
-      .withClass("bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-warning font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/stopUpdates')")
       .withId("heatSensorStopUpdatesButton-" + heatSensorID);
   }
 
   public static DomContent heatSensorSubscribeButton(String clusterID, String heatSensorID) {
     return button("Subscribe")
-      .withClass("bg-purple-500 hover:bg-purple-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-primary font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/subscribe')")
       .withId("heatSensorSubscribeButton-" + heatSensorID);
   }
 
   public static DomContent heatSensorUnsubscribeButton(String clusterID, String heatSensorID) {
     return button("Unsubscribe")
-      .withClass("bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-1 px-2 rounded m-1 text-xs")
+      .withClass("btn btn-secondary font-bold py-1 px-2 rounded m-1 text-xs")
       .withData("on-click", "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/unsubscribe')")
       .withId("heatSensorUnsubscribeButton-" + heatSensorID);
   }
@@ -132,15 +135,15 @@ public class Partials {
     return div(
       text("Temperature:"),
       div().withId("heatSensorUpdates-" + heatSensorID)
-        .withClass("ml-2 text-teal-900")
-    ).withClass("flex gap-2 border-dotted border-2 border-teal-500 text-xs p-1 rounded")
+        .withClass("ml-2 text-base-content")
+    ).withClass("flex gap-2 border-dotted border-2 border-primary text-xs p-1 rounded")
       .withId("heatSensorUpdatesContainer-" + heatSensorID);
   }
 
   public static DomContent heatSensorDataTemplate(String clusterNodeID, String heatSensorID, String temperature) {
     return div(temperature)
       .withId("heatSensorUpdates-" + heatSensorID)
-      .withClass("text-xs text-teal-900");
+      .withClass("text-xs text-base-content");
   }
 
   /*****************************************************************************************
@@ -151,20 +154,20 @@ public class Partials {
     return div(
       div("Heat Sensors:"),
       heatSensorDeployButton(clusterID)
-    ).withClass("border-3 border-teal-500 my-1 p-2 rounded-lg bg-white")
+    ).withClass("border-3 border-primary my-1 p-2 rounded-lg bg-base-200")
       .withId("heatSensorsContainer-" + clusterID);
   }
 
   public static DomContent averageTemp(String message) {
     return div(message)
       .withId("averageTemp")
-      .withClass("text-sm font-semibold text-teal-700 mt-2");
+      .withClass("text-sm font-semibold text-base-content mt-2");
   }
 
   public static DomContent heatSensors() {
     return div(
       button("Manage Heat Sensors")
-        .withClass("bg-teal-500 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded mt-2")
+        .withClass("btn btn-primary font-bold py-2 px-4 rounded mt-2")
         .withData("on-click", "$$post('/heatSensors')")
     ).withId("manageHeatSensorsButton");
   }

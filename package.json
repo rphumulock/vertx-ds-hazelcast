@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build:css": "npx tailwindcss -i ./webroot/css/tailwind.css -o ./webroot/css/output.css --minify",
+    "build:css": "rm -rf ./src/main/resources/webroot/css/output.css && npx tailwindcss -i ./src/main/resources/webroot/css/tailwind.css -o ./src/main/resources/webroot/css/output.css --minify",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,6 +12,7 @@
   "description": "",
   "devDependencies": {
     "autoprefixer": "^10.4.19",
+    "daisyui": "^4.12.10",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6"
   }
