@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://www.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.example</groupId>
@@ -10,22 +10,18 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
     <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
-
     <netty-macos-resolver.version>4.1.65.Final</netty-macos-resolver.version>
     <j2html.version>1.5.0</j2html.version>
-
     <vertx.version>4.5.9</vertx.version>
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
-
     <main.verticle>com.example.cluster_project.MainVerticle</main.verticle>
     <launcher.class>io.vertx.core.Launcher</launcher.class>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
   </properties>
 
   <dependencyManagement>
@@ -79,13 +75,11 @@
       <version>${vertx.version}</version>
       <classifier>processor</classifier>
     </dependency>
-
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.13.4.1</version>
     </dependency>
-
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
@@ -107,7 +101,6 @@
       <version>1.7.36</version>
       <scope>compile</scope>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-resolver-dns-native-macos</artifactId>
@@ -125,7 +118,6 @@
       <artifactId>guava</artifactId>
       <version>32.0.0-android</version>
     </dependency>
-
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
@@ -176,25 +168,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven-compiler-plugin.version}</version>
         <configuration>
-          <annotationProcessors>
-            <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
-          </annotationProcessors>
           <source>${maven.compiler.source}</source>
           <target>${maven.compiler.target}</target>
-          <compilerArgs>
-            <arg>--add-exports</arg>
-            <arg>java.base/jdk.internal.ref=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.base/java.lang=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.base/java.nio=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.base/sun.nio.ch=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.management/sun.management=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>jdk.management/com.sun.management.internal=ALL-UNNAMED</arg>
-          </compilerArgs>
         </configuration>
       </plugin>
       <plugin>
@@ -211,11 +186,31 @@
             <argument>run</argument>
             <argument>${main.verticle}</argument>
           </arguments>
+          <systemProperties>
+            <systemProperty>
+              <key>jdk.module.path</key>
+              <value>${java.home}/lib/jrt-fs.jar</value>
+            </systemProperty>
+          </systemProperties>
+          <executable>${java.home}/bin/java</executable>
           <commandlineArgs>
-            --add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens
-            java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens
-            java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens
-            jdk.management/com.sun.management.internal=ALL-UNNAMED
+            <arg>--add-modules</arg>
+            <arg>java.se</arg>
+            <arg>--add-exports</arg>
+            <arg>java.base/jdk.internal.ref=ALL-UNNAMED</arg>
+            <arg>--add-opens</arg>
+            <arg>java.base/java.lang=ALL-UNNAMED</arg>
+            <arg>--add-opens</arg>
+            <arg>java.base/sun.nio.ch=ALL-UNNAMED</arg>
+            <arg>--add-opens</arg>
+            <arg>java.management/sun.management=ALL-UNNAMED</arg>
+            <arg>--add-opens</arg>
+            <arg>jdk.management/com.sun.management.internal=ALL-UNNAMED</arg>
+            <arg>-cp</arg>
+            <arg>${project.build.directory}/${project.build.finalName}.jar</arg>
+            <arg>io.vertx.core.Launcher</arg>
+            <arg>run</arg>
+            <arg>${main.verticle}</arg>
           </commandlineArgs>
         </configuration>
       </plugin>
@@ -235,6 +230,10 @@
                   <manifestEntries>
                     <Main-Class>io.vertx.core.Launcher</Main-Class>
                     <Main-Verticle>${main.verticle}</Main-Verticle>
+                    <Add-Opens>java.base/java.lang</Add-Opens>
+                    <Add-Opens>java.base/sun.nio.ch</Add-Opens>
+                    <Add-Opens>java.management/sun.management</Add-Opens>
+                    <Add-Opens>jdk.management/com.sun.management.internal</Add-Opens>
                   </manifestEntries>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -251,5 +250,4 @@
       </plugin>
     </plugins>
   </build>
-
 </project>

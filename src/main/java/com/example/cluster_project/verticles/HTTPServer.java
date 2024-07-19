@@ -2,9 +2,7 @@ package com.example.cluster_project.verticles;
 
 import com.example.cluster_project.MainVerticle;
 import com.example.cluster_project.services.ClusterRegistrationService;
-
 import com.example.cluster_project.utils.MessageWrapper;
-
 import com.example.cluster_project.ui.Partials;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
@@ -20,15 +18,14 @@ import io.vertx.ext.web.Session;
 import io.vertx.ext.web.handler.SessionHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.sstore.ClusteredSessionStore;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.example.cluster_project.utils.DatastarUtils.*;
-
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.example.cluster_project.utils.DatastarUtils.*;
 
 public class HTTPServer extends AbstractVerticle {
 
@@ -41,27 +38,26 @@ public class HTTPServer extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
   private ClusterRegistrationService proxy;
+  private List<MessageConsumer<JsonObject>> consumers = new ArrayList<>();
+  private HttpServer httpServer;
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-    JsonObject config = config();
-    int port = config.getInteger("http.port", 8080);
-
     proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
 
     Router router = Router.router(vertx);
     ClusteredSessionStore store = ClusteredSessionStore.create(vertx);
     router.route().handler(SessionHandler.create(store));
-    router.route().handler(StaticHandler.create("src/main/resources/"));
-
+    router.route("/static/*").handler(StaticHandler.create("webroot"));
     setupRoutes(router);
 
-    vertx.createHttpServer()
-      .requestHandler(router)
-      .listen(port)
-      .onSuccess(v -> {
+    httpServer = vertx.createHttpServer()
+      .requestHandler(router);
+
+    httpServer.listen(config().getInteger("http.port", 8080))
+      .onSuccess(server -> {
         logger.info("HTTP verticle deployed successfully");
-        logger.info("Started server successfully on: http://localhost:{}", port);
+        logger.info("Started server successfully on: http://localhost:{}", server.actualPort());
         startPromise.complete();
       })
       .onFailure(t -> {
@@ -72,7 +68,29 @@ public class HTTPServer extends AbstractVerticle {
 
   @Override
   public void stop(Promise<Void> stopPromise) {
-    logger.error("Stopped {} {}", config().getString("clusterID"), HttpServer.class.getName());
+    logger.info("Stopped {} {}", config().getString("clusterID"), HttpServer.class.getName());
+
+    // Unregister all consumers
+    Future.all(consumers.stream()
+        .map(MessageConsumer::unregister)
+        .collect(Collectors.toList()))
+      .compose(v -> {
+        // Close the HTTP server
+        if (httpServer != null) {
+          return httpServer.close();
+        } else {
+          return Future.succeededFuture();
+        }
+      })
+      .onComplete(ar -> {
+        if (ar.succeeded()) {
+          logger.info("All consumers unregistered and HTTP server closed successfully");
+          stopPromise.complete();
+        } else {
+          logger.error("Failed to stop verticle cleanly", ar.cause());
+          stopPromise.fail(ar.cause());
+        }
+      });
   }
 
   private void setupRoutes(Router router) {
@@ -171,6 +189,8 @@ public class HTTPServer extends AbstractVerticle {
     consumer.endHandler(res -> {
       logger.info("cluster.HeatSensors consumer endHandler [{}].", clusterID);
     });
+
+    consumers.add(consumer);
 
     return consumer;
   }
@@ -298,7 +318,6 @@ public class HTTPServer extends AbstractVerticle {
         });
     });
   }
-
 
   private void heatSensorStartUpdatesHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();

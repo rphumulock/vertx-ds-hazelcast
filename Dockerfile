@@ -1,5 +1,5 @@
 # Use an official OpenJDK 11 runtime as a parent image
-FROM container-registry.oracle.com/java/openjdk:22.0.2
+FROM azul/zulu-openjdk:21-latest
 
 # Set environment variables
 ENV VERTICLE_FILE=cluster-project-1.0.0-SNAPSHOT-fat.jar
