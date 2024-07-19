@@ -16,18 +16,17 @@
     <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
 
-    <netty-macos-resolver.version>RELEASE</netty-macos-resolver.version>
-    <j2html.version>RELEASE</j2html.version>
+    <netty-macos-resolver.version>4.1.65.Final</netty-macos-resolver.version>
+    <j2html.version>1.5.0</j2html.version>
 
     <vertx.version>4.5.9</vertx.version>
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
 
     <main.verticle>com.example.cluster_project.MainVerticle</main.verticle>
     <launcher.class>io.vertx.core.Launcher</launcher.class>
-    <maven.compiler.source>22</maven.compiler.source>
-    <maven.compiler.target>22</maven.compiler.target>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
-
 
   <dependencyManagement>
     <dependencies>
@@ -124,7 +123,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>32.0.0-android</version> <!-- Check for the latest version -->
+      <version>32.0.0-android</version>
     </dependency>
 
     <dependency>
@@ -151,12 +150,27 @@
       <resource>
         <directory>src/main/resources</directory>
         <includes>
-          <include>hazelcast.xml</include>
-          <include>log4j2.xml</include>
+          <include>**/*</include>
         </includes>
       </resource>
     </resources>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.2.0</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <resources>
+            <resource>
+              <directory>src/main/resources</directory>
+              <includes>
+                <include>**/*</include>
+              </includes>
+            </resource>
+          </resources>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -165,8 +179,8 @@
           <annotationProcessors>
             <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
           </annotationProcessors>
-          <source>22</source>
-          <target>22</target>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
           <compilerArgs>
             <arg>--add-exports</arg>
             <arg>java.base/jdk.internal.ref=ALL-UNNAMED</arg>
@@ -239,5 +253,3 @@
   </build>
 
 </project>
-
-
