@@ -46,7 +46,7 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
   public Future<JsonArray> registerVerticle(String clusterID, String deploymentName, String deploymentID) {
     Promise<JsonArray> promise = Promise.promise();
 
-    vertx.sharedData().getLockWithTimeout(deploymentName, 5000)
+    vertx.sharedData().getLockWithTimeout(deploymentName, 10000)
       .compose(lock ->
         vertx.sharedData().<String, JsonArray>getAsyncMap(deploymentName)
           .compose(map ->
@@ -75,7 +75,7 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
   public Future<String> unregisterVerticle(String clusterID, String deploymentName, String deploymentID) {
     Promise<String> promise = Promise.promise();
 
-    vertx.sharedData().getLockWithTimeout(deploymentName, 5000)
+    vertx.sharedData().getLockWithTimeout(deploymentName, 10000)
       .compose(lock ->
         vertx.sharedData().<String, JsonArray>getAsyncMap(deploymentName)
           .compose(map -> map.get(deploymentName)
@@ -128,7 +128,7 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
     String lockName = "active." + deploymentName;
     String key = "active." + deploymentName;
 
-    vertx.sharedData().getLockWithTimeout(lockName, 5000)
+    vertx.sharedData().getLockWithTimeout(lockName, 10000)
       .compose(lock ->
         vertx.sharedData().<String, JsonArray>getAsyncMap(key)
           .compose(map ->
@@ -153,7 +153,7 @@ public class ClusterRegistrationServiceImpl implements ClusterRegistrationServic
     String lockName = "active." + deploymentName;
     String key = "active." + deploymentName;
 
-    vertx.sharedData().getLockWithTimeout(lockName, 5000)
+    vertx.sharedData().getLockWithTimeout(lockName, 10000)
       .compose(lock ->
         vertx.sharedData().<String, JsonArray>getAsyncMap(key)
           .compose(map ->

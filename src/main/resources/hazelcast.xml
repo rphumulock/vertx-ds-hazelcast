@@ -1,9 +1,9 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xsi:schemaLocation="http://www.hazelcast.com/schema/config http://hazelcast.com/schema/config/hazelcast-config-4.2.xsd">
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config http://hazelcast.com/schema/config/hazelcast-config-5.0.xsd">
 
   <!-- Cluster name configuration -->
-  <cluster-name>dev</cluster-name>
+  <cluster-name>Vertx-Datastar</cluster-name>
   <member-attributes>
     <attribute name="__vertx.nodeId">unique-identifier</attribute>
   </member-attributes>

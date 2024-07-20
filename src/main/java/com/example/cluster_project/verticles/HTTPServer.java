@@ -54,7 +54,9 @@ public class HTTPServer extends AbstractVerticle {
     httpServer = vertx.createHttpServer()
       .requestHandler(router);
 
-    httpServer.listen(config().getInteger("http.port", 8080))
+    Integer port = config().getInteger("http.port");
+
+    httpServer.listen(port)
       .onSuccess(server -> {
         logger.info("HTTP verticle deployed successfully");
         logger.info("Started server successfully on: http://localhost:{}", server.actualPort());

@@ -11,8 +11,9 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ServiceBinder;
-import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+import com.hazelcast.config.Config;
 
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +29,12 @@ public class MainVerticle extends AbstractVerticle {
   private final List<MessageConsumer<JsonObject>> consumers = new ArrayList<>();
 
   public static void main(String[] args) {
-    HazelcastClusterManager mgr = new HazelcastClusterManager();
+    Config hazelcastConfig = Config.load();
+    hazelcastConfig.getCPSubsystemConfig()
+      .setCPMemberCount(3);
+    HazelcastClusterManager mgr = new HazelcastClusterManager(hazelcastConfig);
     VertxOptions options = new VertxOptions().setClusterManager(mgr);
+
 
     Vertx.clusteredVertx(options, res -> {
       if (res.succeeded()) {
@@ -49,7 +54,9 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
-    JsonObject config = new JsonObject().put("clusterID", deploymentID());
+    JsonObject config = new JsonObject()
+      .put("clusterID", deploymentID())
+      .put("http.port", Integer.parseInt(System.getenv("PORT")));
     DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
     ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
