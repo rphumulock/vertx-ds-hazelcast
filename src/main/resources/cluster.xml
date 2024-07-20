@@ -1,0 +1,35 @@
+<hazelcast xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config http://hazelcast.com/schema/config/hazelcast-config-4.2.xsd">
+
+  <!-- Cluster name configuration -->
+  <cluster-name>dev</cluster-name>
+  <member-attributes>
+    <attribute name="__vertx.nodeId">unique-identifier</attribute>
+  </member-attributes>
+
+  <multimap name="__vertx.subs">
+    <backup-count>1</backup-count>
+    <value-collection-type>SET</value-collection-type>
+  </multimap>
+
+  <map name="__vertx.haInfo">
+    <backup-count>1</backup-count>
+  </map>
+
+  <map name="__vertx.nodeInfo">
+    <backup-count>1</backup-count>
+  </map>
+
+  <cp-subsystem>
+    <cp-member-count>3</cp-member-count>
+    <semaphores>
+      <semaphore>
+        <name>__vertx.*</name>
+        <jdk-compatible>false</jdk-compatible>
+        <initial-permits>1</initial-permits>
+      </semaphore>
+    </semaphores>
+  </cp-subsystem>
+
+</hazelcast>
