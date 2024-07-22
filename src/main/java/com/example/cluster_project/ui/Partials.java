@@ -44,11 +44,15 @@ public class Partials {
    *****************************************************************************************/
 
   public static DomContent heatSensorsContainerTemplate(String clusterID) {
-    return div(
-      div("Cluster-" + clusterID),
-      heatSensorDeployButton(clusterID)
-    ).withId("heatSensorsContainer-" + clusterID)
-      .withClass("border-3 border-primary my-1 p-2 rounded-lg bg-base-200 flex flex-col justify-between items-center");
+    return
+      div(
+        div(
+          text("Cluster-" + clusterID),
+          heatSensorDeployButton(clusterID)
+        ).withClass("my-1 p-2 flex flex-col justify-between items-center"),
+        div().withId("heatSensorsContainer-" + clusterID)
+          .withClass("my-1 p-2 flex flex-col")
+      ).withClass("border-3 border-primary rounded-lg bg-base-200 mx-5 p-5 justify-between items-center");
   }
 
   public static DomContent averageTemp(String message) {
