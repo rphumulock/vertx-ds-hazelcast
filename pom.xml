@@ -74,11 +74,6 @@
       <artifactId>jackson-databind</artifactId>
       <version>2.13.4.1</version>
     </dependency>
-    <dependency>
-      <groupId>com.github.docker-java</groupId>
-      <artifactId>docker-java</artifactId>
-      <version>3.4.0</version>
-    </dependency>
 
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -138,90 +133,10 @@
   </dependencies>
 
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources</directory>
-        <includes>
-          <include>**/*</include>
-        </includes>
-      </resource>
-    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.2.0</version>
-        <configuration>
-          <encoding>UTF-8</encoding>
-          <resources>
-            <resource>
-              <directory>src/main/resources</directory>
-              <includes>
-                <include>**/*</include>
-              </includes>
-            </resource>
-          </resources>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven-compiler-plugin.version}</version>
-        <configuration>
-          <source>${maven.compiler.source}</source>
-          <target>${maven.compiler.target}</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven-surefire-plugin.version}</version>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>${exec-maven-plugin.version}</version>
-        <configuration>
-          <mainClass>io.vertx.core.Launcher</mainClass>
-          <arguments>
-            <argument>run</argument>
-            <argument>${main.verticle}</argument>
-          </arguments>
-          <systemProperties>
-            <systemProperty>
-              <key>hazelcast.diagnostics.enabled</key>
-              <value>true</value>
-            </systemProperty>
-            <systemProperty>
-              <key>jdk.module.path</key>
-              <value>${java.home}/lib/jrt-fs.jar</value>
-            </systemProperty>
-          </systemProperties>
-          <executable>${java.home}/bin/java</executable>
-          <commandlineArgs>
-            <arg>--add-modules</arg>
-            <arg>java.se</arg>
-            <arg>--add-exports</arg>
-            <arg>java.base/jdk.internal.ref=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.base/java.lang=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.base/sun.nio.ch=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>java.management/sun.management=ALL-UNNAMED</arg>
-            <arg>--add-opens</arg>
-            <arg>jdk.management/com.sun.management.internal=ALL-UNNAMED</arg>
-            <arg>-cp</arg>
-            <arg>${project.build.directory}/${project.build.finalName}.jar</arg>
-            <arg>io.vertx.core.Launcher</arg>
-            <arg>run</arg>
-            <arg>${main.verticle}</arg>
-          </commandlineArgs>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>${maven-shade-plugin.version}</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -229,63 +144,15 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <createDependencyReducedPom>false</createDependencyReducedPom>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <!-- Exclude overlapping resources -->
-                    <exclude>META-INF/LICENSE</exclude>
-                    <exclude>META-INF/NOTICE</exclude>
-                    <exclude>META-INF/DEPENDENCIES</exclude>
-                    <exclude>META-INF/versions/9/module-info</exclude>
-                    <exclude>META-INF/MANIFEST.MF</exclude>
-                    <exclude>META-INF/FastDoubleParser-LICENSE</exclude>
-                    <exclude>META-INF/FastDoubleParser-NOTICE</exclude>
-                    <exclude>META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.properties</exclude>
-                    <exclude>META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.xml</exclude>
-                    <exclude>META-INF/io.netty.versions.properties</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-              <relocations>
-                <relocation>
-                  <pattern>com.fasterxml.jackson</pattern>
-                  <shadedPattern>shaded.com.fasterxml.jackson</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>org.apache.logging.log4j</pattern>
-                  <shadedPattern>shaded.org.apache.logging.log4j</shadedPattern>
-                </relocation>
-              </relocations>
               <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/spring.handlers</resource>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/spring.schemas</resource>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/services/**</resource>
-                </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
-                    <Main-Class>com.example.MainClass</Main-Class>
-                    <Main-Class>io.vertx.core.Launcher</Main-Class>
-                    <Main-Verticle>${main.verticle}</Main-Verticle>
-                    <Add-Opens>java.base/java.lang</Add-Opens>
-                    <Add-Opens>java.base/sun.nio.ch</Add-Opens>
-                    <Add-Opens>java.management/sun.management</Add-Opens>
-                    <Add-Opens>jdk.management/com.sun.management.internal</Add-Opens>
+                      <Main-Class>com.example.cluster_project.CustomLauncher</Main-Class>
+                      <Main-Verticle>com.example.cluster_project.MainVerticle</Main-Verticle>
                   </manifestEntries>
                 </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
               </transformers>
-              <artifactSet>
-                <includes>
-                  <include>*:*</include>
-                </includes>
-              </artifactSet>
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
             </configuration>
           </execution>

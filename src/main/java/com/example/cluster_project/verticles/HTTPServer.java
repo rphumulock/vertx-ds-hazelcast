@@ -21,7 +21,6 @@ import io.vertx.ext.web.sstore.ClusteredSessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,16 +28,13 @@ import static com.example.cluster_project.utils.DatastarUtils.*;
 
 public class HTTPServer extends AbstractVerticle {
 
-  public static final String TEMPLATE = ""
-    + "Session [%s] created on %s%n"
+  public static final String TEMPLATE = "Session [%s] created on %s%n"
     + "%n"
     + "Page generated on %s%n";
 
-  SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a");
-
   private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
   private ClusterRegistrationService proxy;
-  private List<MessageConsumer<JsonObject>> consumers = new ArrayList<>();
+  private final List<MessageConsumer<JsonObject>> consumers = new ArrayList<>();
   private HttpServer httpServer;
 
   @Override
@@ -54,7 +50,7 @@ public class HTTPServer extends AbstractVerticle {
     httpServer = vertx.createHttpServer()
       .requestHandler(router);
 
-    Integer port = config().getInteger("http.port");
+    Integer port = config().getInteger("http.port", 8080);
 
     httpServer.listen(port)
       .onSuccess(server -> {
@@ -105,6 +101,24 @@ public class HTTPServer extends AbstractVerticle {
     router.get("/heatSensor/:clusterID/:deploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
     router.get("/heatSensor/:clusterID/:deploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
   }
+
+  private void rootHandler(RoutingContext routingContext) {
+    Session session = routingContext.session();
+    session.computeIfAbsent("createdOn", s -> System.currentTimeMillis());
+    logger.debug(String.format(TEMPLATE, session.id(), new Date(session.<Long>get("createdOn")), new Date()));
+
+    HttpServerResponse response = routingContext.response();
+    String clusterID = config().getString("clusterID");
+
+    sendHtmlResponse(response, Partials.indexTemplate(clusterID));
+  }
+
+  private void heatSensorsHandler(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    setHeaders(response);
+    routingContext.request().bodyHandler(body -> setupHeatSensorDashboard(response));
+  }
+
 
   private void setupHeatSensorDashboard(HttpServerResponse response) {
     String clusterID = config().getString("clusterID");
@@ -184,13 +198,9 @@ public class HTTPServer extends AbstractVerticle {
       }
     });
 
-    consumer.exceptionHandler(res -> {
-      logger.info("cluster.HeatSensors consumer exceptionHandler [{}].", clusterID);
-    });
+    consumer.exceptionHandler(res -> logger.info("cluster.HeatSensors consumer exceptionHandler [{}].", clusterID));
 
-    consumer.endHandler(res -> {
-      logger.info("cluster.HeatSensors consumer endHandler [{}].", clusterID);
-    });
+    consumer.endHandler(res -> logger.info("cluster.HeatSensors consumer endHandler [{}].", clusterID));
 
     consumers.add(consumer);
 
@@ -198,9 +208,7 @@ public class HTTPServer extends AbstractVerticle {
   }
 
   private void heatSensorResponseHandlers(HttpServerResponse response, String clusterID, MessageConsumer<JsonObject> consumer) {
-    response.closeHandler(v -> {
-      logger.info("heatSensorsHandler response closeHandler [{}].", clusterID);
-    });
+    response.closeHandler(v -> logger.info("heatSensorsHandler response closeHandler [{}].", clusterID));
 
     response.endHandler(unused -> {
       logger.info("heatSensorsHandler response endHandler [{}].", clusterID);
@@ -213,25 +221,6 @@ public class HTTPServer extends AbstractVerticle {
           }
         });
       }
-    });
-  }
-
-  private void rootHandler(RoutingContext routingContext) {
-    Session session = routingContext.session();
-    session.computeIfAbsent("createdOn", s -> System.currentTimeMillis());
-    logger.debug(String.format(TEMPLATE, session.id(), new Date(session.<Long>get("createdOn")), new Date()));
-
-    HttpServerResponse response = routingContext.response();
-    String clusterID = config().getString("clusterID");
-
-    sendHtmlResponse(response, Partials.indexTemplate(clusterID));
-  }
-
-  private void heatSensorsHandler(RoutingContext routingContext) {
-    HttpServerResponse response = routingContext.response();
-    setHeaders(response);
-    routingContext.request().bodyHandler(body -> {
-      setupHeatSensorDashboard(response);
     });
   }
 
@@ -290,14 +279,8 @@ public class HTTPServer extends AbstractVerticle {
 
       DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "undeploy");
 
-
-      logger.info("undeploying {} {} {}", clusterID, deploymentID);
-
       vertx.eventBus().request("undeploy-heat-sensor." + clusterID, message, deliveryOptions)
         .onSuccess(reply -> {
-
-          logger.info("success undeploying {} {} {}", clusterID, deploymentID);
-
 
           JsonObject replyBody = (JsonObject) reply.body();
 
@@ -341,21 +324,18 @@ public class HTTPServer extends AbstractVerticle {
           vertx.eventBus().publish("cluster.HeatSensors", message, deliveryOptions);
           return Future.succeededFuture(replyBody);
         })
-        .onSuccess(replyBody -> {
-          response.setStatusCode(200)
-            .end(new JsonObject()
-              .put("status", "success")
-              .put("deploymentID", replyBody.getString("deploymentID"))
-              .encode());
-        })
-        .onFailure(err -> {
-          logger.error(err.getMessage());
-          response.setStatusCode(500)
-            .end(new JsonObject()
-              .put("status", "failure")
-              .put("message", err.getMessage())
-              .encode());
-        });
+        .onSuccess(replyBody -> response.setStatusCode(200)
+          .end(new JsonObject()
+            .put("status", "success")
+            .put("deploymentID", replyBody.getString("deploymentID"))
+            .encode())
+        )
+        .onFailure(err -> response.setStatusCode(500)
+          .end(new JsonObject()
+            .put("status", "failure")
+            .put("message", err.getMessage())
+            .encode())
+        );
     });
   }
 
@@ -379,21 +359,19 @@ public class HTTPServer extends AbstractVerticle {
           vertx.eventBus().publish("cluster.HeatSensors", message, deliveryOptions);
           return Future.succeededFuture(replyBody);
         })
-        .onSuccess(replyBody -> {
-          response.setStatusCode(200)
-            .end(new JsonObject()
-              .put("status", "success")
-              .put("deploymentID", replyBody.getString("deploymentID"))
-              .encode());
-        })
-        .onFailure(err -> {
-          logger.error(err.getMessage());
+        .onSuccess(replyBody -> response.setStatusCode(200)
+          .end(new JsonObject()
+            .put("status", "success")
+            .put("deploymentID", replyBody.getString("deploymentID"))
+            .encode())
+        )
+        .onFailure(err ->
           response.setStatusCode(500)
             .end(new JsonObject()
               .put("status", "failure")
               .put("message", err.getMessage())
-              .encode());
-        });
+              .encode())
+        );
     });
   }
 

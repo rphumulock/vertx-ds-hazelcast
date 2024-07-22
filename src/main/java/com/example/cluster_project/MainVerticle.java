@@ -54,9 +54,16 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
+    // Set default port to 8080
+    int defaultPort = 8080;
+
+    // Retrieve port from environment variable or use default if not present
+    String portEnv = System.getenv("PORT");
+    int port = portEnv != null ? Integer.parseInt(portEnv) : defaultPort;
+
     JsonObject config = new JsonObject()
       .put("clusterID", deploymentID())
-      .put("http.port", Integer.parseInt(System.getenv("PORT")));
+      .put("http.port", port);
     DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
     ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
