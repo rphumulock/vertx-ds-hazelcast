@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Vertx Launcher" type="Application" factoryName="Application">
+    <envs>
+      <env name="JDK_JAVA_OPTIONS" value="--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED" />
+      <env name="PORT" value="8080" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="com.example.cluster_project.CustomLauncher" />
+    <module name="cluster-project" />
+    <option name="PROGRAM_PARAMETERS" value="run com.example.cluster_project.MainVerticle --redeploy=**/*.class --launcher-class=com.example.cluster_project.CustomLauncher --cluster" />
+    <option name="VM_PARAMETERS" value="-Dhazelcast.diagnostics.enabled=true -Dhazelcast.security.recommendations" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
+

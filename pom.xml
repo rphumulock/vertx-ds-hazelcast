@@ -182,6 +182,10 @@
           </arguments>
           <systemProperties>
             <systemProperty>
+              <key>hazelcast.diagnostics.enabled</key>
+              <value>true</value>
+            </systemProperty>
+            <systemProperty>
               <key>jdk.module.path</key>
               <value>${java.home}/lib/jrt-fs.jar</value>
             </systemProperty>

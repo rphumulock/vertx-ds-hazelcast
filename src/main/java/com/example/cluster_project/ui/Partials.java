@@ -152,7 +152,7 @@ public class Partials {
 
   public static DomContent heatSensorsContainerTemplate(String clusterID) {
     return div(
-      div("Heat Sensors:"),
+      div("Heat Sensors on:" + clusterID),
       heatSensorDeployButton(clusterID)
     ).withClass("border-3 border-primary my-1 p-2 rounded-lg bg-base-200")
       .withId("heatSensorsContainer-" + clusterID);

@@ -1,6 +1,11 @@
 <hazelcast xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xsi:schemaLocation="http://www.hazelcast.com/schema/config http://hazelcast.com/schema/config/hazelcast-config-5.0.xsd">
+           xsi:schemaLocation="http://www.hazelcast.com/schema/config http://hazelcast.com/schema/config/hazelcast-config-5.3.xsd">
+
+  <properties>
+    <property name="hazelcast.logging.type">slf4j</property>
+    <property name="hazelcast.discovery.enabled">true</property>
+  </properties>
 
   <!-- Cluster name configuration -->
   <cluster-name>Vertx-Datastar</cluster-name>
@@ -20,6 +25,10 @@
   <map name="__vertx.nodeInfo">
     <backup-count>1</backup-count>
   </map>
+
+  <integrity-checker enabled="true"/>
+
+  <jet enabled="true" />
 
   <cp-subsystem>
     <cp-member-count>3</cp-member-count>

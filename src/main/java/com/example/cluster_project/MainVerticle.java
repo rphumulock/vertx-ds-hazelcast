@@ -11,6 +11,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ServiceBinder;
+
 import com.hazelcast.config.Config;
 
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
@@ -34,7 +35,6 @@ public class MainVerticle extends AbstractVerticle {
       .setCPMemberCount(3);
     HazelcastClusterManager mgr = new HazelcastClusterManager(hazelcastConfig);
     VertxOptions options = new VertxOptions().setClusterManager(mgr);
-
 
     Vertx.clusteredVertx(options, res -> {
       if (res.succeeded()) {
@@ -136,12 +136,8 @@ public class MainVerticle extends AbstractVerticle {
         logger.info("deploy-heat-sensor.{} consumer completionHandler failed.", deploymentID());
       }
     });
-    consumer.exceptionHandler(res -> {
-      logger.info("deploy-heat-sensor.{} consumer exceptionHandler succeeded.", deploymentID());
-    });
-    consumer.endHandler(res -> {
-      logger.info("deploy-heat-sensor.{} consumer endHandler failed.", deploymentID());
-    });
+    consumer.exceptionHandler(res -> logger.info("deploy-heat-sensor.{} consumer exceptionHandler succeeded.", deploymentID()));
+    consumer.endHandler(res -> logger.info("deploy-heat-sensor.{} consumer endHandler failed.", deploymentID()));
   }
 
   public void deployVerticle(Message<JsonObject> message) {
