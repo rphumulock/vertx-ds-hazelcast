@@ -31,8 +31,6 @@ public class MainVerticle extends AbstractVerticle {
 
   public static void main(String[] args) {
     Config hazelcastConfig = Config.load();
-    hazelcastConfig.getCPSubsystemConfig()
-      .setCPMemberCount(3);
     HazelcastClusterManager mgr = new HazelcastClusterManager(hazelcastConfig);
     VertxOptions options = new VertxOptions().setClusterManager(mgr);
 

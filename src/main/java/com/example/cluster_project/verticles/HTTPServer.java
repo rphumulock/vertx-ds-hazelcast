@@ -25,6 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.cluster_project.utils.DatastarUtils.*;
+import static com.example.cluster_project.utils.DatastarUtils.addHeatSensor;
 
 public class HTTPServer extends AbstractVerticle {
 
@@ -145,11 +146,7 @@ public class HTTPServer extends AbstractVerticle {
             JsonObject heatSensorsObject = (JsonObject) item;
             String sensorClusterID = heatSensorsObject.getString("clusterID");
             String deploymentID = heatSensorsObject.getString("deploymentID");
-            if (activated.contains(deploymentID)) {
-              addActiveHeatSensor(response, sensorClusterID, deploymentID);
-            } else {
-              addHeatSensor(response, sensorClusterID, deploymentID);
-            }
+            addHeatSensor(response, sensorClusterID, deploymentID, activated.contains(deploymentID));
           });
         }
 
