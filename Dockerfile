@@ -2,21 +2,13 @@
 FROM azul/zulu-openjdk:21-latest
 
 # Set environment variables
-ENV VERTICLE_FILE=cluster-project-1.0.0-SNAPSHOT-fat.jar
+ENV VERTICLE_FILE=Vertx-Datastar-1.0.0-SNAPSHOT-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME=/usr/verticles
 
 # Set JVM options
-ENV JDK_JAVA_OPTIONS="--add-modules java.se \
-  --add-exports java.base/jdk.internal.ref=ALL-UNNAMED \
-  --add-opens java.base/java.lang=ALL-UNNAMED \
-  --add-opens java.base/java.nio=ALL-UNNAMED \
-  --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
-  --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
-  --add-opens java.management/sun.management=ALL-UNNAMED \
-  --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED \
-  -Dhazelcast.diagnostics.enabled=true"
+ENV JDK_JAVA_OPTIONS="JDK_JAVA_OPTIONS=--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED;"
 
 ARG UID=2604
 ARG GID=2604
@@ -37,4 +29,4 @@ RUN chmod +x /entrypoint.sh
 WORKDIR $VERTICLE_HOME
 
 # Command to run the fat JAR file
-ENTRYPOINT ["/entrypoint.sh", "/usr/verticles/cluster-project-1.0.0-SNAPSHOT-fat.jar"]
+ENTRYPOINT ["/entrypoint.sh", "/usr/verticles/Vertx-Datastar-1.0.0-SNAPSHOT-fat.jar"]

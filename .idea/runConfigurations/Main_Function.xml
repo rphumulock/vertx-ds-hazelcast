@@ -1,11 +1,12 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Main Function" type="Application" factoryName="Application">
-    <option name="ALTERNATIVE_JRE_PATH" value="corretto-11" />
     <envs>
       <env name="JDK_JAVA_OPTIONS" value="--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED" />
+      <env name="JAVA_OPTS" value="-Dhazelcast.diagnostics.enabled=true -Dhazelcast.security.recommendations" />
       <env name="PORT" value="8080" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="com.example.cluster_project.MainVerticle" />
+    <option name="VM_PARAMETERS" value="-Dhazelcast.diagnostics.enabled=true -Dhazelcast.security.recommendations" />
     <module name="cluster-project" />
     <projectPathOnTarget name="projectPathOnTarget" value="/app" />
     <extension name="coverage">
