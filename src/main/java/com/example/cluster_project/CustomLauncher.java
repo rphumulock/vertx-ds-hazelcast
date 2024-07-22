@@ -14,8 +14,6 @@ public class CustomLauncher extends Launcher {
   @Override
   public void beforeStartingVertx(VertxOptions options) {
     Config hazelcastConfig = Config.load();
-    hazelcastConfig.getCPSubsystemConfig()
-      .setCPMemberCount(3);
     HazelcastClusterManager mgr = new HazelcastClusterManager(hazelcastConfig);
     options.setClusterManager(mgr);
 
