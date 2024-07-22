@@ -1,19 +1,13 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Main Function" type="Application" factoryName="Application">
-    <option name="ALTERNATIVE_JRE_PATH" value="corretto-11" />
+  <configuration default="false" name="Main Verticle" type="Application" factoryName="Application">
     <envs>
       <env name="JDK_JAVA_OPTIONS" value="--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED" />
       <env name="PORT" value="8080" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="com.example.cluster_project.MainVerticle" />
     <module name="cluster-project" />
-    <projectPathOnTarget name="projectPathOnTarget" value="/app" />
-    <extension name="coverage">
-      <pattern>
-        <option name="PATTERN" value="com.example.cluster_project.*" />
-        <option name="ENABLED" value="true" />
-      </pattern>
-    </extension>
+    <option name="PROGRAM_PARAMETERS" value="run com.example.cluster_project.MainVerticle --redeploy=**/*.class --launcher-class=io.vertx.core.Launcher --cluster" />
+    <option name="VM_PARAMETERS" value="-Dhazelcast.diagnostics.enabled=true -Dhazelcast.security.recommendations" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
