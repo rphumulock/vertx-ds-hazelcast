@@ -23,6 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// TODO ClusterID's for deployment don't matter as the Service Proxy is shared. Can get rid of clusterId or use something else to deploy.
+// TODO reset with hazelcast if a node goes down
+// TODO add averages
+
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
