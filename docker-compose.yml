@@ -16,11 +16,11 @@ services:
     build:
       context: .
     ports:
-      - "8889:8080"
+      - "8889:8081"
     networks:
       - vertx-network
     environment:
-      - VERTX_PORT=8080
+      - VERTX_PORT=8081
       - HAZELCAST_CLUSTER=true
 
   vertx-instance3:
@@ -28,11 +28,11 @@ services:
     build:
       context: .
     ports:
-      - "8890:8080"
+      - "8890:8082"
     networks:
       - vertx-network
     environment:
-      - VERTX_PORT=8080
+      - VERTX_PORT=8082
       - HAZELCAST_CLUSTER=true
 
 networks:

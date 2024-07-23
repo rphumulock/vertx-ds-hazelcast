@@ -113,7 +113,7 @@ public class HeatSensor extends AbstractVerticle {
 
   private void setUpdateTimer() {
     try {
-      timerID = vertx.setTimer(random.nextInt(2000), this::update);
+      timerID = vertx.setTimer(random.nextInt(2, 2000), this::update);
       retryCount = 0; // Reset retry count on successful timer set
     } catch (Exception e) {
       handleTimerFailure(e);

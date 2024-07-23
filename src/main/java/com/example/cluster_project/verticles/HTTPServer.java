@@ -51,7 +51,7 @@ public class HTTPServer extends AbstractVerticle {
     httpServer = vertx.createHttpServer()
       .requestHandler(router);
 
-    Integer port = config().getInteger("http.port", 8080);
+    Integer port = config().getInteger("http.port", 8080); // Default to 8080 if not set
 
     httpServer.listen(port)
       .onSuccess(server -> {
@@ -171,6 +171,7 @@ public class HTTPServer extends AbstractVerticle {
           addHeatSensorPayload(response, message);
           break;
         case "remove":
+          logger.info("REMOVING HEAT SENSORS");
           removeHeatSensor(response, message);
           break;
         case "startUpdates":
@@ -237,7 +238,7 @@ public class HTTPServer extends AbstractVerticle {
 
       DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "deploy");
 
-      vertx.eventBus().request("deploy-heat-sensor." + clusterID, buffer, deliveryOptions)
+      vertx.eventBus().request("deploy-verticle." + clusterID, buffer, deliveryOptions)
         .onSuccess(reply -> {
           JsonObject replyBody = (JsonObject) reply.body();
 
@@ -274,7 +275,7 @@ public class HTTPServer extends AbstractVerticle {
 
       DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "undeploy");
 
-      vertx.eventBus().request("undeploy-heat-sensor." + clusterID, message, deliveryOptions)
+      vertx.eventBus().request("undeploy-verticle." + clusterID, message, deliveryOptions)
         .onSuccess(reply -> {
 
           JsonObject replyBody = (JsonObject) reply.body();

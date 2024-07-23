@@ -37,6 +37,22 @@
     </trusted-interfaces>
   </management-center>
 
+  <network>
+    <join>
+      <multicast enabled="false"/>
+      <tcp-ip enabled="true">
+        <member-list>
+          <member>vertx-instance1:5701</member>
+          <member>vertx-instance2:5701</member>
+          <member>vertx-instance3:5701</member>
+
+          <!-- Localhost for running outside Docker -->
+<!--          <member>localhost:5701</member>-->
+        </member-list>
+      </tcp-ip>
+    </join>
+  </network>
+
   <cp-subsystem>
     <cp-member-count>3</cp-member-count>
     <semaphores>

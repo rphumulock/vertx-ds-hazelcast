@@ -7,6 +7,7 @@ import com.example.cluster_project.verticles.HTTPServer;
 
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
@@ -54,20 +55,32 @@ public class MainVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) {
     int port = Integer.parseInt(System.getenv().getOrDefault("VERTX_PORT", "8080"));
 
-    JsonObject config = new JsonObject()
-      .put("clusterID", deploymentID())
-      .put("http.port", port);
-    DeploymentOptions options = new DeploymentOptions().setConfig(config);
-
     ClusterRegistrationService service = new ClusterRegistrationServiceImpl(vertx);
     new ServiceBinder(vertx)
       .setAddress("cluster.registration")
       .register(ClusterRegistrationService.class, service);
 
     proxy = ClusterRegistrationService.createProxy(vertx, "cluster.registration");
+
     proxy.registerVerticle(deploymentID(), MainVerticle.class.getName(), deploymentID())
-      .compose(v -> proxy.deployVerticle(deploymentID(), HTTPServer.class.getName(), options))
       .compose(v -> setupConsumers())
+      .compose(v -> {
+        JsonObject config = new JsonObject()
+          .put("clusterID", deploymentID())
+          .put("http.port", port);
+
+        JsonObject message = new JsonObject()
+          .put("clusterID", deploymentID())
+          .put("deploymentName", HTTPServer.class.getName());
+
+        MessageWrapper wrapper = new MessageWrapper(message, new DeploymentOptions().setConfig(config));
+        Buffer buffer = Buffer.buffer();
+        wrapper.writeToBuffer(buffer);
+
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "deploy");
+
+        return vertx.eventBus().<Void>request("deploy-verticle." + deploymentID(), buffer, deliveryOptions);
+      })
       .onSuccess(v -> {
         logger.info("All verticles deployed successfully.");
         startPromise.complete();
@@ -77,6 +90,7 @@ public class MainVerticle extends AbstractVerticle {
         startPromise.fail(cause);
       });
   }
+
 
   @Override
   public void stop(Promise<Void> stopPromise) throws Exception {
@@ -104,11 +118,11 @@ public class MainVerticle extends AbstractVerticle {
   public Future<Void> setupConsumers() {
     Promise<Void> promise = Promise.promise();
 
-    MessageConsumer<JsonObject> deployConsumer = vertx.eventBus().consumer("deploy-heat-sensor." + deploymentID());
+    MessageConsumer<JsonObject> deployConsumer = vertx.eventBus().consumer("deploy-verticle." + deploymentID());
     handleDeployConsumer(deployConsumer);
     consumers.add(deployConsumer);
 
-    MessageConsumer<JsonObject> undeployConsumer = vertx.eventBus().consumer("undeploy-heat-sensor." + deploymentID());
+    MessageConsumer<JsonObject> undeployConsumer = vertx.eventBus().consumer("undeploy-verticle." + deploymentID());
     handleDeployConsumer(undeployConsumer);
     consumers.add(undeployConsumer);
 
@@ -149,19 +163,37 @@ public class MainVerticle extends AbstractVerticle {
     String clusterID = body.getString("clusterID");
     String deploymentName = body.getString("deploymentName");
 
-    proxy.deployVerticle(clusterID, deploymentName, options)
-      .onSuccess(deploymentID -> {
-        JsonObject reply = new JsonObject()
-          .put("status", "success")
-          .put("deploymentID", deploymentID);
-        message.reply(reply);
-      })
-      .onFailure(err -> {
-        JsonObject reply = new JsonObject()
-          .put("status", "failure")
-          .put("message", err.getMessage());
-        message.reply(reply);
-      });
+    if (deploymentName.equals(HTTPServer.class.getName()) && clusterID.equals(deploymentID())) {
+      vertx.deployVerticle(deploymentName, options)
+        .compose(deploymentID -> proxy.registerVerticle(clusterID, deploymentName, deploymentID).map(v -> deploymentID))
+        .onSuccess(deploymentID -> {
+          JsonObject reply = new JsonObject()
+            .put("status", "success")
+            .put("deploymentID", deploymentID);
+          message.reply(reply);
+        })
+        .onFailure(err -> {
+          JsonObject reply = new JsonObject()
+            .put("status", "failure")
+            .put("message", err.getMessage());
+          message.reply(reply);
+        });
+    } else {
+      proxy.deployVerticle(clusterID, deploymentName, options)
+        .onSuccess(deploymentID -> {
+          JsonObject reply = new JsonObject()
+            .put("status", "success")
+            .put("deploymentID", deploymentID);
+          message.reply(reply);
+        })
+        .onFailure(err -> {
+          JsonObject reply = new JsonObject()
+            .put("status", "failure")
+            .put("message", err.getMessage());
+          message.reply(reply);
+        });
+    }
+
   }
 
   public void undeployVerticle(Message<JsonObject> message) {
@@ -187,4 +219,5 @@ public class MainVerticle extends AbstractVerticle {
         message.reply(reply);
       });
   }
+
 }
