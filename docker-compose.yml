@@ -4,7 +4,7 @@ services:
     build:
       context: .
     ports:
-      - "8888-8890:8080"
+      - "8880-8883:8080"
     networks:
       - vertx-network
 
