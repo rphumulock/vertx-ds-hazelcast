@@ -50,9 +50,11 @@ public class Partials {
           text("Cluster-" + clusterID),
           heatSensorDeployButton(clusterID)
         ).withClass("my-1 p-2 flex flex-col justify-between items-center"),
-        div().withId("heatSensorsContainer-" + clusterID)
+        div()
           .withClass("my-1 p-2 flex flex-col")
-      ).withClass("border-3 border-primary rounded-lg bg-base-200 mx-5 p-5 justify-between items-center");
+      )
+        .withId("heatSensorsContainer-" + clusterID)
+        .withClass("border-3 border-primary rounded-lg bg-base-200 mx-5 p-5 justify-between items-center");
   }
 
   public static DomContent averageTemp(String message) {

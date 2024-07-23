@@ -1,12 +1,39 @@
 services:
-  vertx-app:
+  vertx-instance1:
     image: sample/vertx-java-fat
     build:
       context: .
     ports:
-      - "8888-8890:8080"
+      - "8888:8080"
     networks:
       - vertx-network
+    environment:
+      - VERTX_PORT=8080
+      - HAZELCAST_CLUSTER=true
+
+  vertx-instance2:
+    image: sample/vertx-java-fat
+    build:
+      context: .
+    ports:
+      - "8889:8080"
+    networks:
+      - vertx-network
+    environment:
+      - VERTX_PORT=8080
+      - HAZELCAST_CLUSTER=true
+
+  vertx-instance3:
+    image: sample/vertx-java-fat
+    build:
+      context: .
+    ports:
+      - "8890:8080"
+    networks:
+      - vertx-network
+    environment:
+      - VERTX_PORT=8080
+      - HAZELCAST_CLUSTER=true
 
 networks:
   vertx-network:
