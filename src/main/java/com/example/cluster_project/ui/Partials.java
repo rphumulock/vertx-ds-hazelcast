@@ -7,6 +7,10 @@ import static j2html.TagCreator.*;
 
 public class Partials {
 
+  /*****************************************************************************************
+   *  INDEX
+   *****************************************************************************************/
+
   public static String indexTemplate(String clusterID) {
     var title = "Cluster: " + clusterID;
     var store = new JsonObject();
@@ -62,14 +66,6 @@ public class Partials {
       .withClass("text-sm font-semibold text-base-content mt-2");
   }
 
-  public static DomContent manageHeatSensorsButton() {
-    return div(
-      button("Manage Heat Sensors")
-        .withClass("btn btn-primary font-bold py-2 px-4 rounded mt-2")
-        .withData("on-click", "$$post('/heatSensors')")
-    ).withId("manageHeatSensorsButton");
-  }
-
   /*****************************************************************************************
    *  HEAT SENSOR TEMPLATES
    *****************************************************************************************/
@@ -78,36 +74,46 @@ public class Partials {
     return div(
       div("Heat Sensor: " + heatSensorID).withId("heatSensor-" + heatSensorID)
         .withClass("text-sm font-medium text-base-content"),
-      div(
-        isActive ? activeHeatSensorActions(clusterID, heatSensorID) : heatSensorActions(clusterID, heatSensorID)
-      ).withId("heatSensorControlsContainer-" + heatSensorID)
-        .withClass("p-2 rounded-lg mt-1"),
+      isActive ? activeHeatSensorControls(clusterID, heatSensorID) : inactiveHeatSensorControls(clusterID, heatSensorID),
       isActive ? heatSensorUpdatesTemplate(heatSensorID) : null
     ).withId("heatSensorContainer-" + heatSensorID)
       .withClass("border-2 border-primary p-2 my-1 rounded-lg bg-base-200 flex flex-col justify-between items-center");
   }
 
+  /*****************************************************************************************
+   *  HEAT SENSOR CONTROLS
+   *****************************************************************************************/
 
-  public static DomContent heatSensorActions(String clusterID, String heatSensorID) {
+  public static DomContent inactiveHeatSensorControls(String clusterID, String heatSensorID) {
     return div(
       heatSensorStartUpdates(clusterID, heatSensorID),
       heatSensorUndeployButton(clusterID, heatSensorID)
-    ).withId("heatSensorActionsContainer-" + heatSensorID)
-      .withClass("flex flex-col md:flex-row items-center space-x-2");
+    ).withId("heatSensorControlsContainer-" + heatSensorID)
+      .withClass("p-2 rounded-lg mt-1");
   }
 
-  public static DomContent activeHeatSensorActions(String clusterID, String heatSensorID) {
+  public static DomContent activeHeatSensorControls(String clusterID, String heatSensorID) {
     return div(
-      heatSensorUnsubscribeButton(clusterID, heatSensorID),
-      heatSensorStopUpdates(clusterID, heatSensorID),
-      heatSensorUndeployButton(clusterID, heatSensorID)
-    ).withId("heatSensorActionsContainer-" + heatSensorID)
-      .withClass("flex flex-col md:flex-row items-center space-x-2");
+      div(
+        heatSensorStopUpdates(clusterID, heatSensorID),
+        heatSensorUndeployButton(clusterID, heatSensorID)
+      ).withId("heatSensorActionsContainer-" + heatSensorID)
+        .withClass("flex flex-col md:flex-row items-center space-x-2")
+    ).withId("heatSensorControlsContainer-" + heatSensorID)
+      .withClass("p-2 rounded-lg mt-1");
   }
 
   /*****************************************************************************************
    *  HEAT SENSOR BUTTONS
    *****************************************************************************************/
+
+  public static DomContent manageHeatSensorsButton() {
+    return div(
+      button("Manage Heat Sensors")
+        .withClass("btn btn-primary font-bold py-2 px-4 rounded mt-2")
+        .withData("on-click", "$$post('/heatSensors')")
+    ).withId("manageHeatSensorsButton");
+  }
 
   public static DomContent heatSensorDeployButton(String clusterID) {
     return button("Deploy")
@@ -133,17 +139,9 @@ public class Partials {
       .withData("on-click", "$$post('/heatSensor/" + clusterID + "/" + heatSensorID + "/stopUpdates')");
   }
 
-  public static DomContent heatSensorSubscribeButton(String clusterID, String heatSensorID) {
-    return button("Subscribe").withId("heatSensorSubscribeButton-" + heatSensorID)
-      .withClass("btn btn-primary font-bold py-1 px-2 rounded m-1 text-xs")
-      .withData("on-click", "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/subscribe')");
-  }
-
-  public static DomContent heatSensorUnsubscribeButton(String clusterID, String heatSensorID) {
-    return button("Unsubscribe").withId("heatSensorUnsubscribeButton-" + heatSensorID)
-      .withClass("btn btn-secondary font-bold py-1 px-2 rounded m-1 text-xs")
-      .withData("on-click", "$$get('/heatSensor/" + clusterID + "/" + heatSensorID + "/unsubscribe')");
-  }
+  /*****************************************************************************************
+   *  HEAT SENSOR UPDATES
+   *****************************************************************************************/
 
   public static DomContent heatSensorUpdatesTemplate(String heatSensorID) {
     return div(

@@ -99,8 +99,6 @@ public class HTTPServer extends AbstractVerticle {
     router.post("/heatSensor/:clusterID/:deploymentID/undeploy").handler(this::heatSensorUndeployHandler);
     router.post("/heatSensor/:clusterID/:deploymentID/startUpdates").handler(this::heatSensorStartUpdatesHandler);
     router.post("/heatSensor/:clusterID/:deploymentID/stopUpdates").handler(this::heatSensorStopUpdatesHandler);
-    router.get("/heatSensor/:clusterID/:deploymentID/subscribe").handler(this::heatSensorSubscribeHandler);
-    router.get("/heatSensor/:clusterID/:deploymentID/unsubscribe").handler(this::heatSensorUnsubscribeHandler);
   }
 
   private void rootHandler(RoutingContext routingContext) {
@@ -369,30 +367,6 @@ public class HTTPServer extends AbstractVerticle {
               .put("message", err.getMessage())
               .encode())
         );
-    });
-  }
-
-  private void heatSensorSubscribeHandler(RoutingContext routingContext) {
-    HttpServerResponse response = routingContext.response();
-    setHeaders(response);
-    routingContext.request().bodyHandler(body -> {
-      Map<String, String> pathParams = routingContext.pathParams();
-      String clusterID = pathParams.get("clusterID");
-      String deploymentID = pathParams.get("deploymentID");
-      heatSensorSubscribe(response, clusterID, deploymentID);
-      response.end();
-    });
-  }
-
-  private void heatSensorUnsubscribeHandler(RoutingContext routingContext) {
-    HttpServerResponse response = routingContext.response();
-    setHeaders(response);
-    routingContext.request().bodyHandler(body -> {
-      Map<String, String> pathParams = routingContext.pathParams();
-      String clusterID = pathParams.get("clusterID");
-      String deploymentID = pathParams.get("deploymentID");
-      heatSensorUnsubscribe(response, clusterID, deploymentID);
-      response.end();
     });
   }
 
