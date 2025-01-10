@@ -9,6 +9,7 @@ It is a straightforward application that displays generated sensor data, and dyn
 
 1. Run docker compse build
 2. Run docker compose up
+3. Open three browser tabs to localhost:8888/8889/8890
 
 
 
