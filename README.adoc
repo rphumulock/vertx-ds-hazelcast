@@ -6,5 +6,8 @@ It is a straightforward application that displays generated sensor data, and dyn
 ### Getting Started
 
 **Start**
-1. Run docker compse build
-2. Run docker compose up
+- Run docker compse build
+- Run docker compose up
+
+
+
