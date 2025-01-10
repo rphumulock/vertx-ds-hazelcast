@@ -5,9 +5,15 @@ It is a straightforward application that displays generated sensor data, and dyn
 
 ### Getting Started
 
+**Requires**
+1. Java 21 SDK
+2. Docker
+
 **Start**
 
-1. Run docker compse build
+1. Start Docker
+2. Run ./mvnw clean package
+3. Run docker compse build
 2. Run docker compose up
 3. Open three browser tabs to localhost:8888/8889/8890
 
