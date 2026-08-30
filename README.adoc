@@ -3,6 +3,33 @@
 This project demonstrates the use of Vert.x with Hazelcast for clustering and Datastar for a responsive UI.
 It is a straightforward application that displays generated sensor data, and dynamically deploys and removes sensors across the cluster.
 
+## Why this project exists
+
+This is a learning project. I built it to get hands-on with a few things at once:
+
+- **Vert.x clustering with [Hazelcast](https://hazelcast.com/)** — a single event bus
+  spanning three JVMs, so a message sent from the tab in front of you is handled by a
+  verticle running in a different container.
+- **[Datastar](https://data-star.dev/)** — driving the whole UI from the server over SSE,
+  with no client-side application code. There is no Java SDK, so the
+  `datastar-fragment` events are written by hand in
+  [`DatastarUtils`](./src/main/java/com/example/cluster_project/utils/DatastarUtils.java)
+  and the fragments themselves are built with [j2html](https://j2html.com/) in
+  [`Partials`](./src/main/java/com/example/cluster_project/ui/Partials.java) — which
+  makes the protocol unusually easy to read here, because nothing is hiding it.
+- **Vert.x service proxies** — `@ProxyGen` on
+  [`ClusterRegistrationService`](./src/main/java/com/example/cluster_project/services/ClusterRegistrationService.java)
+  generates an event-bus proxy, so any node calls the registry as if it were a local
+  object and the wire hop disappears from the calling code.
+- **Hazelcast shared data as the only state** — which sensors are deployed, and where,
+  lives in a clustered `AsyncMap` guarded by cluster-wide locks. There is no database.
+
+The heat sensors are just the excuse. Each one nudges a temperature and publishes it on a
+random timer; that is the whole of their behaviour. Everything interesting is around them:
+deploying a sensor from a browser tab onto the node you asked for, registering it so every
+other node knows it exists, and watching all three tabs redraw because the server pushed
+new HTML down their open streams. It is small enough that the plumbing stays visible.
+
 ### Getting Started
 
 **Requires**
